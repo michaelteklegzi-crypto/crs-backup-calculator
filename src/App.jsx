@@ -1,0 +1,494 @@
+import React, { useState, useEffect } from 'react';
+import { Settings, Zap, CheckCircle, AlertTriangle, Info, ArrowLeft, HelpCircle, Home, FileText, X } from 'lucide-react';
+import Calculator from './components/Calculator';
+import Results from './components/Results';
+import AdminPanel from './components/AdminPanel';
+import LeadCapture from './components/LeadCapture';
+import SiteVisitForm from './components/SiteVisitForm';
+import EnergyFlow from './components/EnergyFlow';
+import LoanCalculator from './components/LoanCalculator';
+import { calculateSystemSize, calculateFinancials, calculateHourlyEnergy, checkOptimality, DEFAULT_CONSTANTS } from './utils/logic';
+import { supabase } from './utils/supabaseClient';
+
+// Simple Error Boundary Component
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("Uncaught error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+                    <h2>Something went wrong.</h2>
+                    <details style={{ whiteSpace: 'pre-wrap', marginTop: '1rem', color: '#94a3b8' }}>
+                        {this.state.error && this.state.error.toString()}
+                    </details>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#334155', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                        Reload Application
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+function App() {
+    const [step, setStep] = useState(0); // 0: Home, 1: Input, 2: Capture, 3: Results, 4: Site Visit
+    const [userType, setUserType] = useState('residential'); // 'residential' | 'sme'
+    const [constants, setConstants] = useState(DEFAULT_CONSTANTS);
+    const [appliances, setAppliances] = useState([]);
+    const [outageHours, setOutageHours] = useState(4);
+    const [results, setResults] = useState(null);
+    const [warnings, setWarnings] = useState([]);
+
+    // Auth & Data State
+    const [currentLead, setCurrentLead] = useState(null);
+    const [banks, setBanks] = useState([]);
+
+    const [isAdminOpen, setIsAdminOpen] = useState(false);
+    const [showLeadCapture, setShowLeadCapture] = useState(false);
+    const [showSiteVisit, setShowSiteVisit] = useState(false);
+    const [showLoanCalculator, setShowLoanCalculator] = useState(false);
+
+    // New Modals
+    const [showManual, setShowManual] = useState(false);
+    const [showAbout, setShowAbout] = useState(false);
+
+    // Initialize appliances based on type when type changes
+    useEffect(() => {
+        if (userType === 'residential') {
+            setAppliances([
+                { id: 1, name: 'LED Bulbs (Pack)', watts: 50, quantity: 1, hours: 4 },
+                { id: 2, name: 'Refrigerator', watts: 150, quantity: 1, hours: 24 },
+                { id: 3, name: 'WiFi Router', watts: 10, quantity: 1, hours: 24 },
+                { id: 4, name: 'TV (LED)', watts: 80, quantity: 1, hours: 4 },
+            ]);
+        } else {
+            setAppliances([
+                { id: 1, name: 'Desktop Computer', watts: 200, quantity: 2, hours: 8 },
+                { id: 2, name: 'Printer', watts: 300, quantity: 1, hours: 1 },
+                { id: 3, name: 'WiFi Router', watts: 15, quantity: 1, hours: 24 },
+                { id: 4, name: 'Office Lighting', watts: 100, quantity: 1, hours: 8 },
+                { id: 5, name: 'Coffee Machine', watts: 1000, quantity: 1, hours: 0.5 },
+            ]);
+        }
+    }, [userType]);
+
+    // Fetch Banks
+    useEffect(() => {
+        const fetchBanks = async () => {
+            const { data, error } = await supabase.from('banks').select('*').eq('active', true);
+            if (data) setBanks(data);
+        };
+        fetchBanks();
+    }, []);
+
+    // Calculation Handler
+    const handleCalculate = () => {
+        try {
+            const size = calculateSystemSize(appliances, outageHours, constants);
+            const money = calculateFinancials(size, { outageHoursPerDay: outageHours }, constants);
+            const hourly = calculateHourlyEnergy(size, size.totalDailyEnergyWh);
+            const optim = checkOptimality(size, outageHours);
+
+            if (!size || !money || !hourly) {
+                console.error("Calculation returned incomplete data", { size, money, hourly });
+                return;
+            }
+
+            setResults({
+                systemSize: size,
+                financials: money,
+                comparisonData: money.comparisonData,
+                hourlyData: hourly
+            });
+            setWarnings(optim);
+            setShowLeadCapture(true); // Open Modal
+        } catch (err) {
+            console.error("Calculation Error:", err);
+        }
+    };
+
+    const saveProposal = async (leadId, resultData) => {
+        if (!leadId || !resultData) return;
+        try {
+            const { error } = await supabase
+                .from('proposals')
+                .insert([{
+                    lead_id: leadId,
+                    system_size_pv_kw: resultData.systemSize.recommended.pvKw,
+                    system_size_battery_kwh: resultData.systemSize.recommended.batteryKwh,
+                    system_size_inverter_kw: resultData.systemSize.recommended.inverterKw,
+                    total_capex: resultData.financials.capexSolar,
+                    analysis_json: resultData,
+                    created_at: new Date().toISOString()
+                }]);
+
+            if (error) console.error("Error saving proposal:", error);
+        } catch (err) {
+            console.error("Proposal Save Exception:", err);
+        }
+    };
+
+    const handleUnlock = (leadData) => {
+        console.log("Lead Captured:", leadData);
+        setCurrentLead(leadData);
+        setShowLeadCapture(false);
+
+        if (results) {
+            // Save the proposal linked to this lead
+            saveProposal(leadData.id, results);
+            setStep(3); // Move to Results
+        } else {
+            console.error("No results to display. Re-running calculation...");
+            handleCalculate();
+            // Note: If we recalculate here, we might miss saving the proposal immediately.
+            // But usually results should exist if we hit lead capture.
+            setStep(3);
+        }
+    };
+
+    const handleGetProposal = () => {
+        setShowSiteVisit(true);
+    };
+
+    const handleSiteVisitSubmit = (formData) => {
+        console.log("Site Visit Request:", formData);
+        setShowSiteVisit(false);
+        setTimeout(() => {
+            // success action
+        }, 100);
+    };
+
+    const handleAdminClick = () => {
+        const password = prompt("Please enter Admin Password:");
+        if (password === "admin123") { // Simple protection for now
+            setIsAdminOpen(true);
+        } else if (password !== null) {
+            alert("Incorrect Password");
+        }
+    };
+
+    return (
+        <div className="app-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <ErrorBoundary>
+                {/* Header */}
+                <header style={{
+                    position: 'sticky', top: 0, zIndex: 100,
+                    background: 'var(--color-surface-glass-heavy)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    borderBottom: '1px solid var(--color-border-glass)'
+                }}>
+                    <div className="container" style={{ height: '70px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div
+                            onClick={() => setStep(0)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
+                        >
+                            <img
+                                src="/images/crs_logo.png"
+                                alt="CRS Logo"
+                                style={{
+                                    height: '60px',
+                                    width: 'auto',
+                                    objectFit: 'contain',
+                                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.1))'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <button
+                                onClick={() => setStep(0)}
+                                className="btn-icon-only"
+                                title="Home"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
+                            >
+                                <Home size={20} /> <span className="hide-mobile">Home</span>
+                            </button>
+                            <button
+                                onClick={() => setShowManual(true)}
+                                className="btn-icon-only"
+                                title="User Manual"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
+                            >
+                                <HelpCircle size={20} /> <span className="hide-mobile">Help</span>
+                            </button>
+                            <button
+                                onClick={() => setShowAbout(true)}
+                                className="btn-icon-only"
+                                title="About CRS"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
+                            >
+                                <Info size={20} /> <span className="hide-mobile">About</span>
+                            </button>
+
+                            <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.2)', margin: '0 0.5rem' }}></div>
+
+                            <button
+                                onClick={handleAdminClick}
+                                className="btn-icon-only"
+                                title="Advanced Settings"
+                            >
+                                <Settings size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Main Content Area */}
+                <main className="container" style={{ flex: 1, paddingBottom: '4rem', paddingTop: '2rem', position: 'relative' }}>
+
+                    {/* STEP 0: LANDING / SELECTION */}
+                    {step === 0 && (
+                        <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', paddingTop: '4rem' }}>
+                            <h2 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '1.5rem', textShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
+                                Power Your Future
+                            </h2>
+                            <p style={{ fontSize: '1.2rem', color: '#cbd5e1', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem' }}>
+                                Design a custom solar & backup energy solution tailored to your specific needs. Select your profile to get started.
+                            </p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '700px', margin: '0 auto' }}>
+                                {/* Residential Card */}
+                                <button
+                                    onClick={() => { setUserType('residential'); setStep(1); }}
+                                    className="card"
+                                    style={{
+                                        textAlign: 'left', cursor: 'pointer', transition: 'all 0.3s',
+                                        border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.borderColor = 'var(--color-primary)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                >
+                                    <div style={{ width: '50px', height: '50px', background: 'var(--color-primary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                                    </div>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>Residential</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                        For homes and apartments. Backup critical lights, fridge, and entertainment.
+                                    </p>
+                                </button>
+
+                                {/* SME Card */}
+                                <button
+                                    onClick={() => { setUserType('sme'); setStep(1); }}
+                                    className="card"
+                                    style={{
+                                        textAlign: 'left', cursor: 'pointer', transition: 'all 0.3s',
+                                        border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.borderColor = 'var(--color-secondary)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                >
+                                    <div style={{ width: '50px', height: '50px', background: 'var(--color-secondary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M12 6h.01" /><path d="M12 10h.01" /><path d="M12 14h.01" /><path d="M16 10h.01" /><path d="M16 14h.01" /><path d="M8 10h.01" /><path d="M8 14h.01" /></svg>
+                                    </div>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>Business / SME</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                        For offices, shops, and clinics. Keep computers, servers, and security running.
+                                    </p>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 1: CALCULATOR */}
+                    {step === 1 && (
+                        <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
+                            <button
+                                onClick={() => setStep(0)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}
+                            >
+                                <ArrowLeft size={16} /> Back to Selection
+                            </button>
+                            <Calculator
+                                appliances={appliances}
+                                setAppliances={setAppliances}
+                                outageHours={outageHours}
+                                setOutageHours={setOutageHours}
+                                onCalculate={handleCalculate}
+                                userType={userType}
+                            />
+                        </div>
+                    )}
+
+                    {/* STEP 3: RESULTS DASHBOARD */}
+                    {step === 3 && results && (
+                        <div className="animate-fade-in">
+                            <button
+                                onClick={() => setStep(1)}
+                                style={{
+                                    background: 'transparent', border: 'none', color: 'var(--color-text-muted)',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer'
+                                }}>
+                                <ArrowLeft size={16} /> Edit Profile
+                            </button>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+
+                                {/* Left Column: Visuals & Optimality */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {/* 1. Simulation */}
+                                    <EnergyFlow hourlyData={results.hourlyData} />
+
+                                    {/* 2. Optimality Report */}
+                                    <div className="card">
+                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Info size={18} color="var(--color-primary)" /> System Assessment
+                                        </h3>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {warnings.map((w, i) => (
+                                                <div key={i} style={{
+                                                    display: 'flex', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem',
+                                                    background: w.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : (w.type === 'warning' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                                                    borderLeft: `3px solid ${w.type === 'success' ? '#22c55e' : (w.type === 'warning' ? '#eab308' : '#3b82f6')}`
+                                                }}>
+                                                    <div style={{ marginTop: '2px' }}>
+                                                        {w.type === 'success' && <CheckCircle size={18} color="#22c55e" />}
+                                                        {w.type === 'warning' && <AlertTriangle size={18} color="#eab308" />}
+                                                        {w.type === 'info' && <Info size={18} color="#3b82f6" />}
+                                                    </div>
+                                                    <span style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: '1.4' }}>{w.message}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Financials & Sizing */}
+                                <div>
+                                    <Results
+                                        systemSize={results.systemSize}
+                                        financials={results.financials}
+                                        comparisonData={results.comparisonData}
+                                        hourlyData={results.hourlyData}
+                                        onGetProposal={handleGetProposal}
+                                        onFinance={() => setShowLoanCalculator(true)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODALS */}
+
+                    {/* LEAD CAPTURE MODAL */}
+                    {showLeadCapture && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1000 }}>
+                            <LeadCapture
+                                onUnlock={handleUnlock}
+                                userType={userType}
+                            />
+                        </div>
+                    )}
+
+                    {/* SITE VISIT FORM MODAL */}
+                    {showSiteVisit && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2000 }}>
+                            <SiteVisitForm
+                                onSubmit={handleSiteVisitSubmit}
+                                onCancel={() => setShowSiteVisit(false)}
+                                systemSize={results ? results.systemSize : null}
+                                currentLead={currentLead}
+                                userType={userType}
+                            />
+                        </div>
+                    )}
+
+                    {/* LOAN CALCULATOR MODAL */}
+                    {showLoanCalculator && results && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 2000 }}>
+                            <LoanCalculator
+                                totalCapex={results.financials.capexSolar}
+                                onClose={() => setShowLoanCalculator(false)}
+                                currentLead={currentLead}
+                                banks={banks}
+                            />
+                        </div>
+                    )}
+
+                    {/* MANUAL MODAL */}
+                    {showManual && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 3000,
+                            background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center'
+                        }}>
+                            <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
+                                <button onClick={() => setShowManual(false)} className="btn-icon-only" style={{ position: 'absolute', top: '1rem', right: '1rem' }}><X size={24} color="white" /></button>
+                                <h2 style={{ color: 'white', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><HelpCircle /> User Manual</h2>
+
+                                <div className="prose" style={{ color: '#cbd5e1' }}>
+                                    <h3>1. Getting Started</h3>
+                                    <p>Select your profile type (Residential or SME) to load default appliance configurations.</p>
+
+                                    <h3>2. Configuring Appliances</h3>
+                                    <p>Add all electrical appliances you wish to power during an outage. Ensure you specify correct quantities and usage hours.</p>
+
+                                    <h3>3. Understanding Results</h3>
+                                    <p>The system will recommend specific inverter, battery, and panel sizes. Review the "System Assessment" for efficiency warnings.</p>
+
+                                    <h3>4. Applying for Finance</h3>
+                                    <p>Use the "Finance Options" button in the results page to simulate loan payments and submit an application directly to our partner banks.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ABOUT MODAL */}
+                    {showAbout && (
+                        <div style={{
+                            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 3000,
+                            background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center'
+                        }}>
+                            <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
+                                <button onClick={() => setShowAbout(false)} className="btn-icon-only" style={{ position: 'absolute', top: '1rem', right: '1rem' }}><X size={24} color="white" /></button>
+                                <h2 style={{ color: 'white', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Info /> About CRS</h2>
+
+                                <div className="prose" style={{ color: '#cbd5e1' }}>
+                                    <p><strong>CRS (Complete Renewable Solutions)</strong> is dedicated to providing reliable, sustainable energy for Ethiopia.</p>
+                                    <p>We specialize in hybrid solar systems that ensure 24/7 power availability, reducing reliance on the unstable grid and expensive diesel generators.</p>
+                                    <p>Our solutions are tailored for both residential homes and small-to-medium enterprises, offering seamless integration with existing electrical infrastructure.</p>
+                                    <br />
+                                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
+                                        <h4>Contact Us</h4>
+                                        <p>Phone: +251 911 234 567</p>
+                                        <p>Email: info@crs-ethiopia.com</p>
+                                        <p>Address: Bole Road, Addis Ababa</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </main>
+
+                <AdminPanel
+                    isOpen={isAdminOpen}
+                    onClose={() => setIsAdminOpen(false)}
+                    constants={constants}
+                    onUpdate={setConstants}
+                />
+            </ErrorBoundary>
+        </div>
+    );
+}
+
+
+
+
+export default App;
