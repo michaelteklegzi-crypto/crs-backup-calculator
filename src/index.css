@@ -3,7 +3,26 @@
 :root {
   /* CRS Red Palette */
   --color-bg-app: #0f172a;
-  /* Deep Slate */
+  /* Keeping this as a fallback/base */
+
+  /* Premium Dark Theme - "Deep Charcoal" */
+  --color-bg-charcoal: #0a0a0a;
+  --color-bg-charcoal-light: #171717;
+  --color-bg-gradient-premium: radial-gradient(circle at 50% 0%, #1e1e1e 0%, #0a0a0a 60%);
+
+  /* Accents */
+  --color-accent-electric-blue: #3b82f6;
+  --color-accent-emerald: #10b981;
+  --color-accent-glow: rgba(59, 130, 246, 0.4);
+
+  /* Glass / Matte Surfaces */
+  --color-surface-matte: rgba(23, 23, 23, 0.7);
+  --color-surface-matte-light: rgba(38, 38, 38, 0.6);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  /* Reduced opacity for subtlety */
+
+  /* Existing Variables (kept for compatibility) */
+  --color-bg-app: #0f172a;
   --color-bg-gradient: radial-gradient(circle at top left, #1e293b, #0f172a);
 
   --color-surface-glass: rgba(30, 41, 59, 0.6);
@@ -11,13 +30,10 @@
   --color-border-glass: rgba(255, 255, 255, 0.08);
 
   --color-primary: #D32F2F;
-  /* CRS Red */
   --color-primary-glow: rgba(211, 47, 47, 0.4);
 
   --color-secondary: #00E676;
-  /* Bright Green for contrast against red */
   --color-accent: #2979FF;
-  /* Blue */
   --color-danger: #FF1744;
 
   --color-text-main: #f8fafc;
@@ -25,13 +41,17 @@
   --color-text-on-primary: #0f172a;
 
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+  /* Heavier, more "floated" shadow */
   --shadow-glow: 0 0 20px -5px var(--color-primary-glow);
+  --shadow-glow-blue: 0 0 25px -5px var(--color-accent-glow);
 
   --radius-md: 0.75rem;
   --radius-lg: 1.25rem;
   --radius-full: 9999px;
 
-  --font-main: 'Outfit', sans-serif;
+  --font-main: 'Outfit',
+    sans-serif;
 }
 
 body {

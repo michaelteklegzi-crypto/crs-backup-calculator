@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Zap, CheckCircle, AlertTriangle, Info, ArrowLeft, HelpCircle, Home, FileText, X } from 'lucide-react';
 import Calculator from './components/Calculator';
-import Results from './components/Results';
+import GuidedCalculator from './components/GuidedCalculator';
+import Results from './components/Results'; // Keeping fallback just in case
+import PremiumResults from './components/PremiumResults';
 import AdminPanel from './components/AdminPanel';
-import LeadCapture from './components/LeadCapture';
+import AdvisoryModal from './components/AdvisoryModal';
 import SiteVisitForm from './components/SiteVisitForm';
 import EnergyFlow from './components/EnergyFlow';
 import LoanCalculator from './components/LoanCalculator';
@@ -49,7 +51,16 @@ class ErrorBoundary extends React.Component {
 function App() {
     const [step, setStep] = useState(0); // 0: Home, 1: Input, 2: Capture, 3: Results, 4: Site Visit
     const [userType, setUserType] = useState('residential'); // 'residential' | 'sme'
-    const [constants, setConstants] = useState(DEFAULT_CONSTANTS);
+    const [constants, setConstants] = useState(() => {
+        const saved = localStorage.getItem('crs_constants');
+        return saved ? JSON.parse(saved) : DEFAULT_CONSTANTS;
+    });
+
+    // Persist constants to localStorage
+    useEffect(() => {
+        localStorage.setItem('crs_constants', JSON.stringify(constants));
+    }, [constants]);
+
     const [appliances, setAppliances] = useState([]);
     const [outageHours, setOutageHours] = useState(4);
     const [results, setResults] = useState(null);
@@ -60,11 +71,13 @@ function App() {
     const [banks, setBanks] = useState([]);
 
     const [isAdminOpen, setIsAdminOpen] = useState(false);
-    const [showLeadCapture, setShowLeadCapture] = useState(false);
+    // const [showLeadCapture, setShowLeadCapture] = useState(false); // Removed legacy lead capture
     const [showSiteVisit, setShowSiteVisit] = useState(false);
     const [showLoanCalculator, setShowLoanCalculator] = useState(false);
 
     // New Modals
+    const [showAdvisory, setShowAdvisory] = useState(false);
+    const [advisoryMode, setAdvisoryMode] = useState('report'); // 'report' | 'consultation'
     const [showManual, setShowManual] = useState(false);
     const [showAbout, setShowAbout] = useState(false);
 
@@ -117,10 +130,16 @@ function App() {
                 hourlyData: hourly
             });
             setWarnings(optim);
-            setShowLeadCapture(true); // Open Modal
+            // setShowLeadCapture(true); // REMOVED: No longer gatekeeping results
+            setStep(3); // Go directly to Results
         } catch (err) {
             console.error("Calculation Error:", err);
         }
+    };
+
+    const handleOpenAdvisory = (mode) => {
+        setAdvisoryMode(mode);
+        setShowAdvisory(true);
     };
 
     const saveProposal = async (leadId, resultData) => {
@@ -145,24 +164,14 @@ function App() {
     };
 
     const handleUnlock = (leadData) => {
-        console.log("Lead Captured:", leadData);
+        // Legacy handler kept for compatibility if needed, but primary flow is now AdvisoryModal
+        console.log("Lead Captured (Legacy):", leadData);
         setCurrentLead(leadData);
-        setShowLeadCapture(false);
-
-        if (results) {
-            // Save the proposal linked to this lead
-            saveProposal(leadData.id, results);
-            setStep(3); // Move to Results
-        } else {
-            console.error("No results to display. Re-running calculation...");
-            handleCalculate();
-            // Note: If we recalculate here, we might miss saving the proposal immediately.
-            // But usually results should exist if we hit lead capture.
-            setStep(3);
-        }
+        // setShowLeadCapture(false);
     };
 
     const handleGetProposal = () => {
+        // Legacy handler
         setShowSiteVisit(true);
     };
 
@@ -255,12 +264,111 @@ function App() {
 
                     {/* STEP 0: LANDING / SELECTION */}
                     {step === 0 && (
-                        <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', paddingTop: '4rem' }}>
-                            <h2 style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: '1.5rem', textShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
-                                Power Your Future
-                            </h2>
-                            <p style={{ fontSize: '1.2rem', color: '#cbd5e1', marginBottom: '3rem', maxWidth: '600px', margin: '0 auto 3rem' }}>
-                                Design a custom solar & backup energy solution tailored to your specific needs. Select your profile to get started.
+                        <div className="animate-fade-in" style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center', paddingTop: '2rem' }}>
+                            {/* Hero Section */}
+                            <div style={{ marginBottom: '4rem' }}>
+                                <img
+                                    src="/images/crs_logo.png"
+                                    alt="CRS Logo"
+                                    style={{
+                                        height: '100px',
+                                        width: 'auto',
+                                        marginBottom: '1rem',
+                                        filter: 'drop-shadow(0 0 20px rgba(220, 38, 38, 0.2))'
+                                    }}
+                                />
+                                <h1 style={{
+                                    fontSize: '3.5rem',
+                                    fontWeight: 800,
+                                    marginBottom: '1rem',
+                                    background: 'linear-gradient(135deg, white 0%, #cbd5e1 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    textShadow: '0 0 30px rgba(255,255,255,0.1)'
+                                }}>
+                                    Secure Power. Secure Future.
+                                </h1>
+                                <p style={{ fontSize: '1.25rem', color: '#94a3b8', maxWidth: '700px', margin: '0 auto', lineHeight: '1.6' }}>
+                                    Experience the luxury of generating your own clean energy. Break free from the unreliable grid and the rising costs of diesel fuel.
+                                </p>
+                            </div>
+
+                            {/* Infographic Grid */}
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                                gap: '2rem',
+                                marginBottom: '4rem'
+                            }}>
+                                {/* Card 1: The Problem */}
+                                <div className="card" style={{
+                                    background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                                    textAlign: 'left'
+                                }}>
+                                    <div style={{
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        width: '50px', height: '50px',
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        marginBottom: '1rem',
+                                        color: '#ef4444'
+                                    }}>
+                                        <AlertTriangle size={24} />
+                                    </div>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Rising Diesel Costs</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                        Traditional generators are a financial drain. With fuel prices skyrocketing and high maintenance requirements, every hour of outage costs you more.
+                                    </p>
+                                </div>
+
+                                {/* Card 2: The Solution */}
+                                <div className="card" style={{
+                                    background: 'linear-gradient(180deg, rgba(34, 197, 94, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                                    border: '1px solid rgba(34, 197, 94, 0.2)',
+                                    textAlign: 'left'
+                                }}>
+                                    <div style={{
+                                        background: 'rgba(34, 197, 94, 0.1)',
+                                        width: '50px', height: '50px',
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        marginBottom: '1rem',
+                                        color: '#22c55e'
+                                    }}>
+                                        <Settings size={24} />
+                                    </div>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Renewable Independence</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                        Generate your own power with our premium hybrid systems. Enjoy silent, automatic backup that reduces your carbon footprint and grid dependency.
+                                    </p>
+                                </div>
+
+                                {/* Card 3: The Benefit */}
+                                <div className="card" style={{
+                                    background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                                    textAlign: 'left'
+                                }}>
+                                    <div style={{
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        width: '50px', height: '50px',
+                                        borderRadius: '12px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        marginBottom: '1rem',
+                                        color: '#3b82f6'
+                                    }}>
+                                        <Zap size={24} />
+                                    </div>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Lower Bills, Higher Luxury</h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                        Invest in an asset, not a liability. Drastically reduce your electricity bills while enjoying the luxury of uninterrupted power in your home or office.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p style={{ fontSize: '1.1rem', color: '#cbd5e1', marginBottom: '2rem', fontWeight: 500 }}>
+                                design your custom solution below
                             </p>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '700px', margin: '0 auto' }}>
@@ -309,20 +417,15 @@ function App() {
 
                     {/* STEP 1: CALCULATOR */}
                     {step === 1 && (
-                        <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                            <button
-                                onClick={() => setStep(0)}
-                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}
-                            >
-                                <ArrowLeft size={16} /> Back to Selection
-                            </button>
-                            <Calculator
+                        <div style={{ width: '100%' }}>
+                            <GuidedCalculator
+                                userType={userType}
                                 appliances={appliances}
                                 setAppliances={setAppliances}
                                 outageHours={outageHours}
                                 setOutageHours={setOutageHours}
                                 onCalculate={handleCalculate}
-                                userType={userType}
+                                onBack={() => setStep(0)}
                             />
                         </div>
                     )}
@@ -330,72 +433,39 @@ function App() {
                     {/* STEP 3: RESULTS DASHBOARD */}
                     {step === 3 && results && (
                         <div className="animate-fade-in">
-                            <button
-                                onClick={() => setStep(1)}
-                                style={{
-                                    background: 'transparent', border: 'none', color: 'var(--color-text-muted)',
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer'
-                                }}>
-                                <ArrowLeft size={16} /> Edit Profile
-                            </button>
+                            <div>
+                                <button
+                                    onClick={() => setStep(1)}
+                                    style={{
+                                        background: 'transparent', border: 'none', color: 'var(--color-text-muted)',
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer'
+                                    }}>
+                                    <ArrowLeft size={16} /> Edit Profile
+                                </button>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-
-                                {/* Left Column: Visuals & Optimality */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                    {/* 1. Simulation */}
-                                    <EnergyFlow hourlyData={results.hourlyData} />
-
-                                    {/* 2. Optimality Report */}
-                                    <div className="card">
-                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Info size={18} color="var(--color-primary)" /> System Assessment
-                                        </h3>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                            {warnings.map((w, i) => (
-                                                <div key={i} style={{
-                                                    display: 'flex', gap: '0.75rem', padding: '0.75rem', borderRadius: '0.5rem',
-                                                    background: w.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : (w.type === 'warning' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(59, 130, 246, 0.1)'),
-                                                    borderLeft: `3px solid ${w.type === 'success' ? '#22c55e' : (w.type === 'warning' ? '#eab308' : '#3b82f6')}`
-                                                }}>
-                                                    <div style={{ marginTop: '2px' }}>
-                                                        {w.type === 'success' && <CheckCircle size={18} color="#22c55e" />}
-                                                        {w.type === 'warning' && <AlertTriangle size={18} color="#eab308" />}
-                                                        {w.type === 'info' && <Info size={18} color="#3b82f6" />}
-                                                    </div>
-                                                    <span style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: '1.4' }}>{w.message}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Financials & Sizing */}
-                                <div>
-                                    <Results
-                                        systemSize={results.systemSize}
-                                        financials={results.financials}
-                                        comparisonData={results.comparisonData}
-                                        hourlyData={results.hourlyData}
-                                        onGetProposal={handleGetProposal}
-                                        onFinance={() => setShowLoanCalculator(true)}
-                                    />
-                                </div>
+                                <PremiumResults
+                                    systemSize={results.systemSize}
+                                    financials={results.financials}
+                                    comparisonData={results.comparisonData}
+                                    hourlyData={results.hourlyData}
+                                    onOpenAdvisory={handleOpenAdvisory}
+                                    onFinance={() => setShowLoanCalculator(true)}
+                                    userType={userType}
+                                    outageHours={outageHours}
+                                />
                             </div>
                         </div>
                     )}
 
                     {/* MODALS */}
 
-                    {/* LEAD CAPTURE MODAL */}
-                    {showLeadCapture && (
-                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1000 }}>
-                            <LeadCapture
-                                onUnlock={handleUnlock}
-                                userType={userType}
-                            />
-                        </div>
-                    )}
+                    {/* NEW ADVISORY MODAL (Replaces LeadCapture) */}
+                    <AdvisoryModal
+                        isOpen={showAdvisory}
+                        onClose={() => setShowAdvisory(false)}
+                        mode={advisoryMode}
+                        userType={userType}
+                    />
 
                     {/* SITE VISIT FORM MODAL */}
                     {showSiteVisit && (
@@ -487,8 +557,5 @@ function App() {
         </div>
     );
 }
-
-
-
 
 export default App;
