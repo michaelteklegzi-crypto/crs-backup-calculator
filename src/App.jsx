@@ -53,7 +53,8 @@ function App() {
     const [userType, setUserType] = useState('residential'); // 'residential' | 'sme'
     const [constants, setConstants] = useState(() => {
         const saved = localStorage.getItem('crs_constants');
-        return saved ? JSON.parse(saved) : DEFAULT_CONSTANTS;
+        // Merge saved constants with defaults to ensure new keys are present
+        return saved ? { ...DEFAULT_CONSTANTS, ...JSON.parse(saved) } : DEFAULT_CONSTANTS;
     });
 
     // Persist constants to localStorage
@@ -63,6 +64,7 @@ function App() {
 
     const [appliances, setAppliances] = useState([]);
     const [outageHours, setOutageHours] = useState(4);
+    const [phase, setPhase] = useState('unknown'); // '1-phase' | '3-phase' | 'unknown'
     const [results, setResults] = useState(null);
     const [warnings, setWarnings] = useState([]);
 
@@ -113,7 +115,7 @@ function App() {
     // Calculation Handler
     const handleCalculate = () => {
         try {
-            const size = calculateSystemSize(appliances, outageHours, constants);
+            const size = calculateSystemSize(appliances, outageHours, phase, constants);
             const money = calculateFinancials(size, { outageHoursPerDay: outageHours }, constants);
             const hourly = calculateHourlyEnergy(size, size.totalDailyEnergyWh);
             const optim = checkOptimality(size, outageHours);
@@ -134,6 +136,7 @@ function App() {
             setStep(3); // Go directly to Results
         } catch (err) {
             console.error("Calculation Error:", err);
+            alert("An error occurred during calculation. Please check your appliance inputs and try again.");
         }
     };
 
@@ -426,6 +429,8 @@ function App() {
                                 setAppliances={setAppliances}
                                 outageHours={outageHours}
                                 setOutageHours={setOutageHours}
+                                phase={phase}
+                                setPhase={setPhase}
                                 onCalculate={handleCalculate}
                                 onBack={() => setStep(0)}
                             />

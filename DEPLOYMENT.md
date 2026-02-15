@@ -6,7 +6,7 @@ This application is built with **React (Vite)** and uses **Supabase** for the ba
 
 Before deploying, ensure you have:
 1.  **Supabase Project:** Your Supabase project should be set up with the correct database schema.
-    - Run the contents of `setup_database.sql` and `update_schema_banks.sql` in your Supabase SQL Editor.
+    - Run the contents of `setup_database.sql`, `update_schema_banks.sql`, and **`setup_admin_cost_module.sql`** in your Supabase SQL Editor.
 2.  **Supabase Credentials:** You will need your project URL and Anon Key.
 3.  **GitHub Account:** Recommended for continuous deployment.
 

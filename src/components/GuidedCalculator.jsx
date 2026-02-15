@@ -82,7 +82,7 @@ const STEPS = [
     { id: 3, label: 'Review' }
 ];
 
-const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, setOutageHours, onCalculate, onBack }) => {
+const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, setOutageHours, phase, setPhase, onCalculate, onBack }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [activeCategory, setActiveCategory] = useState(null);
     const [editingLoad, setEditingLoad] = useState(null); // Load being configured { name, watts, qty ... }
@@ -153,9 +153,9 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                         <div className="animate-fade-in">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <div>
-                                    <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', color: 'white' }}>Select Your Loads</h2>
+                                    <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', color: 'white' }}>Define Critical Loads</h2>
                                     <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                                        Choose from categories or add a custom device.
+                                        Precision inputs ensure accurate inverter sizing.
                                     </p>
                                 </div>
                                 <button
@@ -277,14 +277,41 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                     {/* STEP 3: REVIEW */}
                     {currentStep === 3 && (
                         <div className="animate-fade-in">
-                            <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', color: 'white' }}>System Review</h2>
+                            <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem', color: 'white' }}>System Architecture Review</h2>
                             <p style={{ color: 'var(--color-text-muted)', marginBottom: '2rem' }}>
-                                Confirm your configuration before we engineer your architecture.
+                                Verify your load profile and connection type.
                             </p>
+
+                            {/* Phase Selection */}
+                            <div style={{ marginBottom: '2rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem' }}>Grid Connection Phase</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                                    {[
+                                        { id: '1-phase', label: 'Single Phase', desc: 'Typical Residential' },
+                                        { id: '3-phase', label: 'Three Phase', desc: 'Large Home / Ind.' },
+                                        { id: 'unknown', label: "I Don't Know", desc: 'Defaults to Single' }
+                                    ].map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => setPhase(p.id)}
+                                            style={{
+                                                padding: '1rem', borderRadius: '0.5rem',
+                                                border: phase === p.id ? '2px solid var(--color-accent-electric-blue)' : '1px solid var(--color-border-glass)',
+                                                background: phase === p.id ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255,255,255,0.02)',
+                                                color: phase === p.id ? 'white' : 'var(--color-text-muted)',
+                                                textAlign: 'left'
+                                            }}
+                                        >
+                                            <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{p.label}</div>
+                                            <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{p.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
                                 <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(15, 23, 42, 0.5) 100%)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Total Load</div>
+                                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Peak Continuous Load</div>
                                     <div style={{ fontSize: '2rem', fontWeight: 700, color: 'white' }}>{totalWatts} W</div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--color-accent-emerald)', marginTop: '0.5rem' }}>Peak Demand</div>
                                 </div>
@@ -349,7 +376,7 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                     <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--color-text-muted)' }}>
                             <Zap size={18} />
-                            <span style={{ fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Load</span>
+                            <span style={{ fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Peak Rating</span>
                         </div>
                         <div style={{
                             fontSize: '4rem', fontWeight: 800,
@@ -359,13 +386,13 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                         }}>
                             {totalWatts}
                         </div>
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Watts</div>
+                        <div style={{ color: 'var(--color-text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>Watts (Continuous)</div>
                     </div>
 
                     <div style={{ textAlign: 'center', paddingTop: '2rem', borderTop: '1px solid var(--color-border-glass)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--color-text-muted)' }}>
                             <BarChart3 size={18} />
-                            <span style={{ fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Est. Daily</span>
+                            <span style={{ fontWeight: 500, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Energy Demand</span>
                         </div>
                         <div style={{ fontSize: '3rem', fontWeight: 700, color: 'white' }}>{dailyKwh.toFixed(1)}</div>
                         <div style={{ color: 'var(--color-text-muted)', fontSize: '1rem', marginTop: '0.5rem' }}>kWh / day</div>
@@ -411,7 +438,7 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                         )}
 
                         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                            <label className="label">Quantity</label>
+                            <label className="label">Quantity of Units</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid var(--color-border-glass)' }}>
                                 <button onClick={() => handleUpdateLoad(Math.max(1, editingLoad.quantity - 1), 'quantity')} className="btn-icon-only" style={{ width: '40px', height: '40px' }}>-</button>
                                 <span style={{ color: 'white', fontSize: '1.5rem', fontWeight: 600, flex: 1, textAlign: 'center' }}>{editingLoad.quantity}</span>
@@ -428,13 +455,16 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                                 onChange={(e) => handleUpdateLoad(Number(e.target.value), 'watts')}
                                 style={{ fontSize: '1.2rem', padding: '1rem' }}
                             />
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                                check device label for "Rated Power"
+                            </div>
                         </div>
 
                         <div className="form-group" style={{ marginBottom: '2rem' }}>
-                            <label className="label">Daily Runtime (Hours)</label>
+                            <label className="label">Daily Runtime Duration</label>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'white', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                    <span>{editingLoad.hours} Hours</span>
+                                    <span>{editingLoad.hours} Hours / Day</span>
                                 </div>
                                 <input
                                     type="range" min="0.5" max="24" step="0.5"
@@ -445,7 +475,11 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                                     <span>30m</span>
                                     <span>12h</span>
-                                    <span>24h</span>
+                                    <span>24h (Always On)</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-emerald)', marginTop: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '4px' }}>
+                                    <Info size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                                    Tip: Be conservative. Over-estimating runtime significantly increases battery cost.
                                 </div>
                             </div>
                         </div>

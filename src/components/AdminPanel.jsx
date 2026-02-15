@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Info, Database, Settings, ChevronDown, ChevronRight, User, Phone, MapPin, Calendar, DollarSign, FileText } from 'lucide-react';
+import { X, Info, Database, Settings, ChevronDown, ChevronRight, User, Phone, MapPin, Calendar, DollarSign, FileText, RefreshCw, Save, Truck, Activity } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
+import { runCostEngine } from '../utils/costEngine';
 
 const DESCRIPTIONS = {
     SYSTEM_EFFICIENCY: "Overall system efficiency factor (0-1). Accounts for wire loss, etc.",
@@ -12,9 +13,10 @@ const DESCRIPTIONS = {
     SPEC_BATTERY_KWH: "Capacity of a single Battery Unit (e.g., 5kWh).",
     SPEC_INVERTER_KW: "Capacity of a single Inverter Unit (e.g., 5kW).",
 
-    COST_UNIT_PV_PANEL: "Cost of ONE PV Panel Unit (ETB).",
-    COST_UNIT_BATTERY: "Cost of ONE Battery Unit (ETB).",
-    COST_UNIT_INVERTER: "Cost of ONE Inverter Unit (ETB).",
+    COST_UNIT_PV_PANEL: "Cost of ONE PV Panel Unit (ETB) - Auto-calculated.",
+    COST_UNIT_BATTERY: "Cost of ONE Battery Unit (ETB) - Auto-calculated.",
+    COST_UNIT_INVERTER: "Cost of ONE 1-Phase Inverter (5kW) - Auto-calculated.",
+    COST_UNIT_INVERTER_3PH: "Cost of ONE 3-Phase Inverter (15kW) - Auto-calculated.",
 
     COST_INSTALLATION_FLAT: "Flat fee for installation labor and logistics (ETB).",
     MAINTENANCE_ANNUAL_SOLAR: "Annual maintenance cost for cleaning and checkups (ETB).",
@@ -31,12 +33,17 @@ const DESCRIPTIONS = {
 };
 
 const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
-    const [activeTab, setActiveTab] = useState('leads'); // 'params' | 'leads' | 'banks'
+    const [activeTab, setActiveTab] = useState('leads'); // 'params' | 'leads' | 'banks' | 'costs'
     const [localConstants, setLocalConstants] = useState(constants);
     const [leads, setLeads] = useState([]);
     const [banks, setBanks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedLead, setExpandedLead] = useState(null);
+
+    // Cost Module State
+    const [costSettings, setCostSettings] = useState([]);
+    const [exchangeRate, setExchangeRate] = useState(null);
+    const [calculating, setCalculating] = useState(false);
 
     // Bank Form State
     const [newBank, setNewBank] = useState({ name: '', interest_rate: '' });
@@ -45,13 +52,13 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
         if (isOpen) {
             if (activeTab === 'leads') fetchLeads();
             if (activeTab === 'banks') fetchBanks();
+            if (activeTab === 'costs') fetchCostSettings();
         }
     }, [isOpen, activeTab]);
 
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            // Fetch relevant data
             const { data: leadsData, error: leadsError } = await supabase
                 .from('leads')
                 .select(`
@@ -81,6 +88,88 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
             console.error("Error fetching banks:", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCostSettings = async () => {
+        setLoading(true);
+        try {
+            // Fetch Equipment Settings
+            const { data: settings, error } = await supabase.from('equipment_import_costs').select('*').order('equipment_type');
+            if (error) throw error;
+            setCostSettings(settings || []);
+
+            // Fetch Latest Exchange Rate
+            const { data: rate, error: rateError } = await supabase.from('exchange_rates').select('*').order('fetched_at', { ascending: false }).limit(1).single();
+            if (rate) setExchangeRate(rate);
+        } catch (err) {
+            console.error("Error fetching cost settings:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCostSettingChange = (id, field, value) => {
+        setCostSettings(prev => prev.map(item =>
+            item.id === id ? { ...item, [field]: parseFloat(value) || 0 } : item
+        ));
+    };
+
+    const saveCostSettings = async () => {
+        setLoading(true);
+        try {
+            const updates = costSettings.map(item => ({
+                id: item.id,
+                equipment_type: item.equipment_type,
+                import_usd: item.import_usd,
+                shipping_usd: item.shipping_usd,
+                customs_duty_percent: item.customs_duty_percent,
+                inland_transport_etb: item.inland_transport_etb,
+                margin_percent: item.margin_percent
+            }));
+
+            const { error } = await supabase.from('equipment_import_costs').upsert(updates);
+            if (error) throw error;
+            alert("Cost settings saved successfully.");
+        } catch (err) {
+            console.error("Error saving cost settings:", err);
+            alert("Failed to save settings.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRecalculateCosts = async () => {
+        setCalculating(true);
+        try {
+            // 1. Save current settings first to ensure logic uses latest
+            await saveCostSettings();
+
+            // 2. Run Engine
+            const result = await runCostEngine(); // Returns { exchangeRate, costs: { COST_UNIT_PV... } }
+
+            // 3. Update Local Constants
+            const newConstants = { ...localConstants, ...result.costs };
+            setLocalConstants(newConstants);
+
+            // 4. Trigger Parent Update (App.jsx)
+            onUpdate(newConstants);
+
+            // 5. Refresh UI
+            setExchangeRate({ rate_sell: result.exchangeRate, fetched_at: new Date().toISOString() });
+
+            // Format nice message
+            const details = Object.entries(result.costs)
+                .map(([k, v]) => `${k.replace('COST_UNIT_', '')}: ${new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB' }).format(v)}`)
+                .join('\n');
+
+            alert(`Costs recalculated successfully using Exchange Rate: ${result.exchangeRate.toFixed(4)} ETB/USD.\n\nNew Unit Costs:\n${details}`);
+
+        } catch (err) {
+            console.error("Cost Calculation Logic Failed:", err);
+            alert(`Calculation failed: ${err.message}`);
+        } finally {
+            setCalculating(false);
         }
     };
 
@@ -133,7 +222,7 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
     };
 
     const formatCurrency = (val) => {
-        if (!val) return 'ETB 0';
+        if (!val && val !== 0) return 'ETB 0';
         return new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(val);
     };
 
@@ -150,7 +239,7 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
             backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
-            <div className="card" style={{ width: '900px', height: '90vh', display: 'flex', flexDirection: 'column', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', padding: 0 }}>
+            <div className="card" style={{ width: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', padding: 0 }}>
 
                 {/* Header */}
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -176,6 +265,20 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                         }}
                     >
                         Leads & Requests
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('costs')}
+                        style={{
+                            flex: 1,
+                            padding: '1rem 1.5rem', background: 'transparent',
+                            borderBottom: activeTab === 'costs' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                            color: activeTab === 'costs' ? 'white' : '#94a3b8',
+                            fontWeight: activeTab === 'costs' ? 600 : 400,
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                        }}
+                    >
+                        <DollarSign size={16} /> Cost Engine
                     </button>
                     <button
                         onClick={() => setActiveTab('banks')}
@@ -291,6 +394,101 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                             )}
                         </div>
                     )}
+
+                    {/* COST ENGINE TAB (NEW) */}
+                    {activeTab === 'costs' && (
+                        <div className="animate-fade-in">
+                            {/* Exchange Rate Status */}
+                            <div className="card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Activity size={20} color="var(--color-accent-emerald)" /> Live Exchange Rate Mode
+                                    </h3>
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                                        Calculations use daily market rates automatically.
+                                    </p>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>USD / ETB Rate</div>
+                                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'white' }}>
+                                        {exchangeRate ? exchangeRate.rate_sell.toFixed(2) : '---'}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                        Last Updated: {exchangeRate ? new Date(exchangeRate.fetched_at).toLocaleTimeString() : 'Never'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Equipment Cost Tables */}
+                            <div style={{ display: 'grid', gap: '2rem' }}>
+                                {costSettings.map(item => (
+                                    <div key={item.id} className="card" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>
+                                            <h3 style={{ fontSize: '1.1rem', color: 'white', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                {item.equipment_type.replace('_', ' ')}
+                                            </h3>
+                                            <div style={{ color: 'var(--color-accent-electric-blue)', fontSize: '0.9rem' }}>
+                                                Landed Cost Config
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+                                            <div>
+                                                <label className="label">Import Cost (USD)</label>
+                                                <input type="number" className="input-field" value={item.import_usd} onChange={(e) => handleCostSettingChange(item.id, 'import_usd', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="label">Shipping (USD)</label>
+                                                <input type="number" className="input-field" value={item.shipping_usd} onChange={(e) => handleCostSettingChange(item.id, 'shipping_usd', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="label">Customs Duty (%)</label>
+                                                <input type="number" className="input-field" value={item.customs_duty_percent} onChange={(e) => handleCostSettingChange(item.id, 'customs_duty_percent', e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="label">Inland Transport (ETB)</label>
+                                                <input type="number" className="input-field" value={item.inland_transport_etb} onChange={(e) => handleCostSettingChange(item.id, 'inland_transport_etb', e.target.value)} />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <label className="label" style={{ marginBottom: 0 }}>Margin / Markup (%)</label>
+                                                <input type="number" className="input-field" style={{ width: '100px' }} value={item.margin_percent} onChange={(e) => handleCostSettingChange(item.id, 'margin_percent', e.target.value)} />
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Current Calculated Unit Cost</div>
+                                                <div style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600 }}>
+                                                    {formatCurrency(
+                                                        item.equipment_type === 'pv_panel' ? localConstants.COST_UNIT_PV_PANEL :
+                                                            item.equipment_type === 'battery_unit' ? localConstants.COST_UNIT_BATTERY :
+                                                                localConstants.COST_UNIT_INVERTER
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {costSettings.length === 0 && !loading && (
+                                    <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444', border: '1px dashed #ef4444', borderRadius: '0.5rem' }}>
+                                        Error: Cost Settings tables not found. Please run the SQL setup script.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Bar */}
+                            <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
+                                <button onClick={saveCostSettings} disabled={loading} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Save size={18} /> Save Settings Only
+                                </button>
+                                <button onClick={handleRecalculateCosts} disabled={calculating} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: calculating ? '#64748b' : 'var(--color-primary)' }}>
+                                    <RefreshCw size={18} className={calculating ? 'animate-spin' : ''} />
+                                    {calculating ? 'Running Cost Engine...' : 'Recalculate Unit Costs'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* BANKS TAB */}
                     {activeTab === 'banks' && (
                         <div className="animate-fade-in">
@@ -363,6 +561,12 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                     {/* PARAMS TAB */}
                     {activeTab === 'params' && (
                         <div>
+                            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px dashed var(--color-accent)', borderRadius: '0.5rem', background: 'rgba(234, 179, 8, 0.1)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                <Info size={20} color="var(--color-accent)" />
+                                <div style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>
+                                    <strong>Note:</strong> Some parameters below (Cost Units) are managed automatically by the Cost Engine. Manual edits here may be overwritten.
+                                </div>
+                            </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                                 {Object.entries(localConstants).map(([key, value]) => (
                                     <div key={key} style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '0.5rem' }}>
@@ -388,6 +592,7 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                             </div>
                         </div>
                     )}
+
                 </div>
             </div>
         </div>

@@ -20,7 +20,8 @@ export const DEFAULT_CONSTANTS = {
     // Component Unit Costs (ETB)
     COST_UNIT_PV_PANEL: 15000,
     COST_UNIT_BATTERY: 180000,
-    COST_UNIT_INVERTER: 85000,
+    COST_UNIT_INVERTER: 85000, // 5kW 1-Phase
+    COST_UNIT_INVERTER_3PH: 250000, // 15kW 3-Phase Default
 
     // Other Costs
     COST_INSTALLATION_FLAT: 50000,
@@ -38,7 +39,7 @@ export const DEFAULT_CONSTANTS = {
     INFLATION_RATE: 0.15 // Fuel inflation
 };
 
-export function calculateSystemSize(loadProfile, outageHours, constants = DEFAULT_CONSTANTS) {
+export function calculateSystemSize(loadProfile, outageHours, phase = 'unknown', constants = DEFAULT_CONSTANTS) {
     // 1. Calculate Total Daily Energy (Wh) and Peak Power (W)
     let totalDailyEnergyWh = 0;
     let rawPeakPowerW = 0;
@@ -56,7 +57,7 @@ export function calculateSystemSize(loadProfile, outageHours, constants = DEFAUL
     const coincidenceFactor = applianceCount > 3 ? 0.7 : 0.85;
 
     // We keep a safety floor: largest single load must be supported 100%
-    const maxSingleLoad = Math.max(...loadProfile.map(i => i.watts));
+    const maxSingleLoad = loadProfile.length > 0 ? Math.max(...loadProfile.map(i => i.watts)) : 0;
     const calculatedPeak = rawPeakPowerW * coincidenceFactor;
 
     // Final Peak Power is either the calculated coincident peak OR the largest single load (whichever is higher)
@@ -74,22 +75,11 @@ export function calculateSystemSize(loadProfile, outageHours, constants = DEFAUL
     // Use the potentially reduced peakPowerW
     const requiredInverterKw = (peakPowerW / 1000) * constants.INVERTER_OVERSIZE_FACTOR;
 
-    // 5. Determine Unit Counts (Rounding up to multiple of 5 units logic)
-    // Constraint: The user wants the displayed PV, Battery, Inverter capacity to be multiples of 5 (e.g., 5, 10, 15).
+    // 5. Determine Unit Counts (Rounding up to multiple of units logic)
 
-    // a. PV Sizing (Multiple of 5 kW) - Relaxed to 2.5kW steps for small systems? No, stick to prompt mostly but allow closer matches.
-    // Actually, prompt requested "standard engineering practices". Oversizing PV is cheap.
-    // Let's stick to 2.5kW increments if 5kW is too big? Start with 3kW min?
-    // User complaint "oversized". Let's stick to 5kW but ensure logic is sound.
-
+    // a. PV Sizing (Multiple of 5 kW) - Relaxed
     const rawPvKw = requiredPVKw;
-    // Round to nearest 2.5kW block instead of 5kW to be more precise?
-    // Or just strictly follow the "Component Unit Spec" which says 5kW/5kWh. 
-    // If the unit is 5kW, we must use multiples of 5.
-    // If the calculated load is 1kW, 5kW is the minimum hardware unit.
-    const finalPvKw = Math.max(constants.SPEC_PV_WATTAGE * 6 / 1000, Math.ceil(rawPvKw)); // Min 6 panels (~3.3kW) or just raw?
-    // Let's stick to the previous block logic but maybe the coincidence factor fixes the inverter "Oversizing".
-
+    const finalPvKw = Math.max(constants.SPEC_PV_WATTAGE * 6 / 1000, Math.ceil(rawPvKw));
     const numPanels = Math.ceil((Math.max(3, rawPvKw) * 1000) / constants.SPEC_PV_WATTAGE);
     const displayedPvKw = (numPanels * constants.SPEC_PV_WATTAGE) / 1000;
 
@@ -98,10 +88,21 @@ export function calculateSystemSize(loadProfile, outageHours, constants = DEFAUL
     const finalBatteryKwh = Math.max(5, Math.ceil(rawBatteryKwh / 5) * 5); // Min 5kWh
     const numBatteries = Math.ceil(finalBatteryKwh / constants.SPEC_BATTERY_KWH);
 
-    // c. Inverter Sizing (Multiple of 5 kW)
+    // c. Inverter Sizing (Phase Dependent)
     const rawInverterKw = requiredInverterKw;
-    const finalInverterKw = Math.max(5, Math.ceil(rawInverterKw / 5) * 5); // Min 5kW
-    const numInverters = Math.ceil(finalInverterKw / constants.SPEC_INVERTER_KW);
+    let finalInverterKw, numInverters, is3Phase;
+
+    if (phase === '3-phase') {
+        is3Phase = true;
+        const unitSize = 15; // 15kW Unit for 3-Phase
+        finalInverterKw = Math.max(unitSize, Math.ceil(rawInverterKw / unitSize) * unitSize);
+        numInverters = Math.ceil(finalInverterKw / unitSize);
+    } else {
+        is3Phase = false;
+        const unitSize = constants.SPEC_INVERTER_KW; // 5kW Unit for Single Phase
+        finalInverterKw = Math.max(unitSize, Math.ceil(rawInverterKw / unitSize) * unitSize);
+        numInverters = Math.ceil(finalInverterKw / unitSize);
+    }
 
     return {
         totalDailyEnergyWh,
@@ -110,6 +111,7 @@ export function calculateSystemSize(loadProfile, outageHours, constants = DEFAUL
             pvKw: Number(displayedPvKw.toFixed(2)), // Actual PV installed
             batteryKwh: finalBatteryKwh,
             inverterKw: finalInverterKw,
+            is3Phase: is3Phase,
             units: {
                 panels: numPanels,
                 batteries: numBatteries,
@@ -120,13 +122,16 @@ export function calculateSystemSize(loadProfile, outageHours, constants = DEFAUL
 }
 
 export function calculateFinancials(systemSize, userInputs, constants) {
-    const { units, pvKw } = systemSize.recommended;
+    const { units, pvKw, is3Phase } = systemSize.recommended;
     const { outageHoursPerDay } = userInputs;
 
     // 1. CAPEX: Solar System
     const costPV = units.panels * constants.COST_UNIT_PV_PANEL;
     const costBattery = units.batteries * constants.COST_UNIT_BATTERY;
-    const costInverter = units.inverters * constants.COST_UNIT_INVERTER;
+
+    // Choose Inverter Cost based on Phase
+    const costInverter = units.inverters * (is3Phase ? constants.COST_UNIT_INVERTER_3PH : constants.COST_UNIT_INVERTER);
+
     const totalCapexSolar = costPV + costBattery + costInverter + constants.COST_INSTALLATION_FLAT;
 
     // 2. CAPEX: Diesel Generator
@@ -220,7 +225,10 @@ export function calculateFinancials(systemSize, userInputs, constants) {
     const annualBillSavings = Math.round((annualGridKwh_DieselScenario - annualGridKwh_SolarScenario) * constants.GRID_PRICE_PER_KWH);
 
     // 3. Solar Fraction / Self-Sufficiency
-    const solarFraction = Math.min(100, Math.round(((annualLoadKwh - annualGridKwh_SolarScenario) / annualLoadKwh) * 100));
+    let solarFraction = 100;
+    if (annualLoadKwh > 0) {
+        solarFraction = Math.min(100, Math.round(((annualLoadKwh - annualGridKwh_SolarScenario) / annualLoadKwh) * 100));
+    }
 
     // 4. TCO 5 Years
     const tco5YearSolar = comparisonData.find(d => d.year === 5)?.Solar || 0;
