@@ -203,7 +203,7 @@ function App() {
                     WebkitBackdropFilter: 'blur(16px)',
                     borderBottom: '1px solid var(--color-border-glass)'
                 }}>
-                    <div className="container" style={{ height: '70px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="container" style={{ height: '90px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div
                             onClick={() => setStep(0)}
                             style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
@@ -212,12 +212,13 @@ function App() {
                                 src="/images/crs_logo.png"
                                 alt="CRS Logo"
                                 style={{
-                                    height: '60px',
+                                    height: '80px',
                                     width: 'auto',
                                     objectFit: 'contain',
                                     filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.1))'
                                 }}
                             />
+                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', letterSpacing: '1px' }}>CRS</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -271,12 +272,13 @@ function App() {
                                     src="/images/crs_logo.png"
                                     alt="CRS Logo"
                                     style={{
-                                        height: '100px',
+                                        height: '120px',
                                         width: 'auto',
                                         marginBottom: '1rem',
                                         filter: 'drop-shadow(0 0 20px rgba(220, 38, 38, 0.2))'
                                     }}
                                 />
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '2px', color: '#94a3b8', marginBottom: '1.5rem' }}>COMPLETE RENEWABLE SOLUTIONS</div>
                                 <h1 style={{
                                     fontSize: '3.5rem',
                                     fontWeight: 800,
