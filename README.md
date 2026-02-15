@@ -1,4 +1,5 @@
-# Solarazma | CRS Backup Power Calculator
+#  | CRS Backup Power & Finanace Calculator 
+## | powered by Mike
 
 A premium, interactive solar design tool built for **Climate Resilient Solutions (CRS)**. 
 Inspired by the "Solarazma" philosophy, this calculator provides clean, real-time visualization of energy flows and financial impacts.
