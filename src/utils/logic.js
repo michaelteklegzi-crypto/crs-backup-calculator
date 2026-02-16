@@ -31,6 +31,9 @@ export const DEFAULT_CONSTANTS = {
     GRID_PRICE_PER_KWH: 3, // Current Grid Tariff (Tier 1/2) - User can adjust
     GRID_INFLATION_RATE: 0.12, // Annual grid price increase
 
+    // Financial Risk Management
+    EXCHANGE_RATE_HEDGE_PERCENT: 15, // Buffer for exchange rate volatility (%)
+
     // Legacy Generator Constants (Restored for Comparison)
     GEN_CAPEX: 650000, // Adjusted estimate for quality 10kVA Silent Diesel
     GEN_FUEL_CONSUMPTION_LPH: 3.5,
@@ -231,7 +234,9 @@ export function calculateFinancials(systemSize, userInputs, constants) {
     }
 
     // 4. TCO 5 Years
-    const tco5YearSolar = comparisonData.find(d => d.year === 5)?.Solar || 0;
+    // Force explicit summation to be sure and clear
+    // Solar TCO = Capex + (Maintenance * 5) + (Residual Grid * 5 corrected for inflation)
+    const tco5YearSolar = comparisonData.find(d => d.year === 5)?.Solar || (totalCapexSolar + (constants.MAINTENANCE_ANNUAL_SOLAR * 5));
     const tco5YearDiesel = comparisonData.find(d => d.year === 5)?.Diesel || 0;
 
     return {
@@ -255,7 +260,7 @@ export function calculateFinancials(systemSize, userInputs, constants) {
     };
 }
 
-export function calculateHourlyEnergy(systemSize, totalDailyLoadWh) {
+export function calculateHourlyEnergy(systemSize, totalDailyLoadWh, userType = 'residential', appliances = []) {
     const { pvKw, batteryKwh } = systemSize.recommended;
     const hourlyData = [];
 
@@ -263,14 +268,52 @@ export function calculateHourlyEnergy(systemSize, totalDailyLoadWh) {
     let batterySoC = batteryKwh * 0.5 * 1000; // Start at 50% capacity (in Wh)
     const batteryCapacityWh = batteryKwh * 1000;
 
-    // Load Profile (Double Hump - Morning & Evening peaks)
-    // Normalized distribution percentages for 24 hours
-    const loadDistribution = [
-        0.02, 0.02, 0.02, 0.02, 0.02, 0.04, // 0-5
-        0.08, 0.10, 0.06, 0.04, 0.03, 0.03, // 6-11
-        0.03, 0.03, 0.03, 0.04, 0.05, 0.08, // 12-17
-        0.10, 0.10, 0.08, 0.06, 0.04, 0.03  // 18-23
-    ];
+    // Detect Profile
+    let distribution = [];
+    let note = "";
+
+    // Check for Coffee Shop indicators (SME + Espresso/Comm Fridge/Grinder)
+    const isCoffeeShop = userType === 'sme' && appliances.some(a =>
+        a.name.toLowerCase().includes('espresso') ||
+        a.name.toLowerCase().includes('grinder') ||
+        a.name.toLowerCase().includes('restaurant')
+    );
+
+    if (isCoffeeShop) {
+        // COFFEE SHOP / RESTAURANT PROFILE
+        // High traffic: Morning (8-10), Noon (12-14), Late (17-20)
+        note = "Assumption: Coffee Shop / Restaurant Profile (Peaks at Breakfast, Lunch, Dinner)";
+        distribution = [
+            0.01, 0.01, 0.01, 0.01, 0.01, 0.02, // 0-5 (Closed)
+            0.04, 0.06, 0.08, 0.08, 0.06, 0.05, // 6-11 (Morning Rush 8-10)
+            0.07, 0.09, 0.09, 0.06, 0.05, 0.07, // 12-17 (Lunch Peak 12-14)
+            0.09, 0.09, 0.07, 0.04, 0.02, 0.01  // 18-23 (Dinner/Evening Peak 18-20, then close)
+        ];
+    } else if (userType === 'sme') {
+        // STANDARD OFFICE / RETAIL PROFILE
+        // Flat curve during business hours (9-17)
+        note = "Assumption: Commercial Office / Retail Profile (Steady Day Usage 9am-5pm)";
+        distribution = [
+            0.02, 0.02, 0.02, 0.02, 0.02, 0.03, // 0-5 (Base load)
+            0.05, 0.08, 0.10, 0.10, 0.10, 0.10, // 6-11 (Open 8/9am -> High Flat)
+            0.10, 0.10, 0.10, 0.10, 0.10, 0.05, // 12-17 (High Flat -> Close 5pm)
+            0.03, 0.02, 0.02, 0.02, 0.02, 0.02  // 18-23 (Closed)
+        ];
+    } else {
+        // RESIDENTIAL PROFILE (Default)
+        // Morning rise, Day dip, Evening Peak
+        note = "Assumption: Residential Profile (Morning & Evening Peaks)";
+        distribution = [
+            0.02, 0.02, 0.02, 0.02, 0.02, 0.04, // 0-5
+            0.08, 0.10, 0.06, 0.04, 0.03, 0.03, // 6-11
+            0.03, 0.03, 0.03, 0.04, 0.05, 0.08, // 12-17
+            0.10, 0.10, 0.08, 0.06, 0.04, 0.03  // 18-23
+        ];
+    }
+
+    // Normalize distribution to ensures sum is exactly 1.0 reduces drift
+    const sumDist = distribution.reduce((a, b) => a + b, 0);
+    const normalizedDist = distribution.map(v => v / sumDist);
 
     for (let i = 0; i < 24; i++) {
         // 1. Calculate Solar Generation for this hour (Simple Gaussian centered at 13:00)
@@ -281,24 +324,8 @@ export function calculateHourlyEnergy(systemSize, totalDailyLoadWh) {
         const solarGenWh = (pvKw * 1000 * 0.85) * solarIntensity;
 
         // 2. Calculate Load for this hour
-        // Dynamically sharpen the evening peak if peakPowerW is high compared to average
-        // This helps align the "Peak Load" metric with the visual graph
-        const baseLoadWh = totalDailyLoadWh * loadDistribution[i];
-
+        const baseLoadWh = totalDailyLoadWh * normalizedDist[i];
         let loadWh = baseLoadWh;
-
-        // Boost evening peak (18:00 - 21:00) if the system has high potential power but low energy (e.g. short duration heavy loads)
-        // This is a visual heuristic to reduce the "mismatch" confusion
-        if (i >= 18 && i <= 21) {
-            // Check if our base peak is way lower than the potential peak
-            const impliedPower = baseLoadWh; // 1 hour duration
-            if (impliedPower < (systemSize.peakPowerW * 0.4)) {
-                loadWh = baseLoadWh * 1.5; // Artificial boost to show "peak usage" more clearly
-            }
-        }
-
-        // Ensure we don't exceed total daily energy significantly (normalization factor would be better but this is a sim)
-        // We'll trust the base distribution mostly.
 
         // 3. Battery Logic
         let netEnergy = solarGenWh - loadWh;
@@ -338,7 +365,10 @@ export function calculateHourlyEnergy(systemSize, totalDailyLoadWh) {
         });
     }
 
-    return hourlyData;
+    return {
+        data: hourlyData,
+        note
+    };
 }
 
 export function checkOptimality(systemSize, outageHours) {

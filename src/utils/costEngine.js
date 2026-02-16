@@ -72,18 +72,22 @@ export function calculateLandedCost(equipment, exchangeRate) {
  * 3. Calculates New Unit Costs
  * 4. Updates System Parameters (in memory/DB)
  */
-export async function runCostEngine() {
+export async function runCostEngine(hedgePercent = 0) {
     // 1. Get Rate
-    const exchangeRate = await fetchExchangeRate();
+    const baseRate = await fetchExchangeRate();
 
-    // 2. Get Equipment Settings
+    // 2. Apply Hedge
+    // Users can set a buffer (e.g. 15%) to account for volatility between quote and purchase
+    const effectiveRate = baseRate * (1 + (hedgePercent / 100));
+
+    // 3. Get Equipment Settings
     const { data: equipmentList, error } = await supabase
         .from('equipment_import_costs')
         .select('*');
 
     if (error || !equipmentList) throw new Error('Failed to fetch equipment costs');
 
-    // 3. Calculate
+    // 4. Calculate
     const results = {};
     const equipmentMap = {
         'pv_panel': 'COST_UNIT_PV_PANEL',
@@ -94,24 +98,30 @@ export async function runCostEngine() {
         'inverter_3ph_15kw': 'COST_UNIT_INVERTER_3PH'
     };
 
+    // Helper to calculate cost for a single item
+    const calcCost = (item, rate) => {
+        const importEtb = item.import_usd * rate;
+        const shippingEtb = item.shipping_usd * rate;
+        const dutyEtb = importEtb * (item.customs_duty_percent / 100);
+        const baseLandedCost = importEtb + shippingEtb + dutyEtb + item.inland_transport_etb + (item.port_handling_etb || 0);
+        return Math.round(baseLandedCost * (1 + (item.margin_percent / 100)));
+    };
+
     for (const item of equipmentList) {
-        const finalCost = calculateLandedCost(item, exchangeRate);
+        const finalCost = calcCost(item, effectiveRate);
         const paramKey = equipmentMap[item.equipment_type];
 
         if (paramKey) {
             results[paramKey] = finalCost;
-
-            // Log Calculation
-            await supabase.from('calculated_unit_costs').insert([{
-                equipment_type: item.equipment_type,
-                exchange_rate_used: exchangeRate,
-                final_unit_cost_etb: finalCost
-            }]);
         }
     }
 
+    // Log the run (optional context)
+    // We don't save every run to DB to avoid spam, or we can update a 'last_run' table if needed.
+
     return {
-        exchangeRate,
+        exchangeRate: baseRate,
+        effectiveRate,
         costs: results
     };
 }

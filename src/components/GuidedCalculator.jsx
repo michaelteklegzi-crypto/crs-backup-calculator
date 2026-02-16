@@ -26,7 +26,8 @@ const LOAD_CATEGORIES = {
             icon: Home,
             description: 'Lifestyle & Convenience',
             items: [
-                { name: 'Air Conditioner', watts: 1500, hours: 6 },
+                { name: 'Electric Water Heater', watts: 2000, hours: 2 },
+                { name: 'Electric Oven', watts: 3000, hours: 1 },
                 { name: 'Washing Machine', watts: 500, hours: 1 },
                 { name: 'Water Pump', watts: 750, hours: 0.5 },
                 { name: 'Microwave', watts: 1200, hours: 0.3 },
@@ -41,13 +42,16 @@ const LOAD_CATEGORIES = {
             id: 'core',
             label: 'Core Operations',
             icon: Briefcase,
-            description: 'Basic office functionality',
+            description: 'Basic office & shop functionality',
             items: [
                 { name: 'Office Lighting', watts: 150, hours: 9 },
+                { name: 'Shop Lighting', watts: 400, hours: 10 },
                 { name: 'Desktop PC', watts: 250, hours: 9 },
                 { name: 'Laptop', watts: 65, hours: 8 },
                 { name: 'WiFi / Network', watts: 30, hours: 24 },
-                { name: 'Printer / Copier', watts: 400, hours: 1 }
+                { name: 'Printer / Copier', watts: 400, hours: 1 },
+                { name: 'Sound System', watts: 100, hours: 10 },
+                { name: 'Blender', watts: 1000, hours: 1 }
             ]
         },
         {
@@ -59,7 +63,10 @@ const LOAD_CATEGORIES = {
                 { name: 'Server Rack (Small)', watts: 800, hours: 24 },
                 { name: 'Security Camera System', watts: 60, hours: 24 },
                 { name: 'POS Terminal', watts: 50, hours: 10 },
-                { name: 'Medical Fridge', watts: 200, hours: 24 }
+                { name: 'Medical Fridge', watts: 200, hours: 24 },
+                { name: 'Commercial Fridge', watts: 400, hours: 24 },
+                { name: 'Espresso Machine', watts: 3000, hours: 4 },
+                { name: 'Coffee Grinder', watts: 400, hours: 2 }
             ]
         }
     ]
@@ -68,11 +75,13 @@ const LOAD_CATEGORIES = {
 const PRESETS = {
     residential: [
         { label: 'Small Apartment', loads: [{ name: 'LED Bulbs (Pack)', watts: 40, quantity: 1, hours: 5 }, { name: 'WiFi Router', watts: 10, quantity: 1, hours: 24 }, { name: 'Refrigerator', watts: 150, quantity: 1, hours: 24 }, { name: 'LCD TV', watts: 100, quantity: 1, hours: 4 }] },
-        { label: '3-Bedroom Villa', loads: [{ name: 'LED Bulbs (Pack)', watts: 100, quantity: 1, hours: 6 }, { name: 'WiFi Router', watts: 15, quantity: 1, hours: 24 }, { name: 'Refrigerator', watts: 200, quantity: 1, hours: 24 }, { name: 'LCD TV', watts: 150, quantity: 2, hours: 4 }, { name: 'Water Pump', watts: 750, quantity: 1, hours: 1 }] }
+        { label: '3-Bedroom Villa', loads: [{ name: 'LED Bulbs (Pack)', watts: 100, quantity: 1, hours: 6 }, { name: 'WiFi Router', watts: 15, quantity: 1, hours: 24 }, { name: 'Refrigerator', watts: 200, quantity: 1, hours: 24 }, { name: 'LCD TV', watts: 150, quantity: 2, hours: 4 }, { name: 'Water Pump', watts: 750, quantity: 1, hours: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5 }] },
+        { label: 'Big Villa (+5 Bedroom)', loads: [{ name: 'LED Bulbs (Pack)', watts: 200, quantity: 1, hours: 8 }, { name: 'WiFi Router', watts: 20, quantity: 2, hours: 24 }, { name: 'Refrigerator (Large)', watts: 250, quantity: 2, hours: 24 }, { name: 'LCD TV', watts: 150, quantity: 3, hours: 5 }, { name: 'Water Pump', watts: 1500, quantity: 1, hours: 1 }, { name: 'Electric Water Heater', watts: 2000, quantity: 2, hours: 2 }, { name: 'Electric Oven', watts: 3000, quantity: 1, hours: 1 }, { name: 'Washing Machine', watts: 800, quantity: 1, hours: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5 }] }
     ],
     sme: [
         { label: 'Small Office', loads: [{ name: 'Office Lighting', watts: 200, quantity: 1, hours: 9 }, { name: 'WiFi / Network', watts: 30, quantity: 1, hours: 24 }, { name: 'Laptop', watts: 65, quantity: 4, hours: 8 }, { name: 'Printer / Copier', watts: 300, quantity: 1, hours: 1 }] },
-        { label: 'Retail Shop', loads: [{ name: 'Office Lighting', watts: 300, quantity: 1, hours: 10 }, { name: 'POS Terminal', watts: 50, quantity: 1, hours: 10 }, { name: 'Security Camera System', watts: 40, quantity: 1, hours: 24 }] }
+        { label: 'Retail Shop', loads: [{ name: 'Office Lighting', watts: 300, quantity: 1, hours: 10 }, { name: 'POS Terminal', watts: 50, quantity: 1, hours: 10 }, { name: 'Security Camera System', watts: 40, quantity: 1, hours: 24 }] },
+        { label: 'Coffee Shop / Restaurant', loads: [{ name: 'Espresso Machine', watts: 3000, quantity: 1, hours: 4 }, { name: 'Coffee Grinder', watts: 400, quantity: 2, hours: 2 }, { name: 'Commercial Fridge', watts: 400, quantity: 2, hours: 24 }, { name: 'Shop Lighting', watts: 400, quantity: 1, hours: 10 }, { name: 'POS Terminal', watts: 50, quantity: 2, hours: 10 }, { name: 'Blender', watts: 1000, quantity: 1, hours: 1 }, { name: 'Sound System', watts: 100, quantity: 1, hours: 10 }] }
     ]
 };
 

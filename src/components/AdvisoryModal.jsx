@@ -149,34 +149,53 @@ const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType }) => {
                             </div>
 
                             {/* Conditional Fields based on Mode */}
-                            {isReport ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div className="input-group" style={{ marginBottom: 0 }}>
-                                        <label className="label">Project City</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <MapPin size={16} color="#64748b" style={{ position: 'absolute', left: '12px', top: '14px' }} />
-                                            <input
-                                                className="input-field"
-                                                style={{ paddingLeft: '2.5rem' }}
-                                                placeholder="Addis Ababa"
-                                                required
-                                                value={formData.city}
-                                                onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="input-group" style={{ marginBottom: 0 }}>
-                                        <label className="label">Company (Optional)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="input-group" style={{ marginBottom: 0 }}>
+                                    <label className="label">Project City</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <MapPin size={16} color="#64748b" style={{ position: 'absolute', left: '12px', top: '14px' }} />
                                         <input
                                             className="input-field"
-                                            placeholder="Acme Corp"
-                                            value={formData.company}
-                                            onChange={e => setFormData({ ...formData, company: e.target.value })}
+                                            style={{ paddingLeft: '2.5rem' }}
+                                            placeholder="Addis Ababa"
+                                            required
+                                            value={formData.city}
+                                            onChange={e => setFormData({ ...formData, city: e.target.value })}
                                         />
                                     </div>
                                 </div>
-                            ) : (
-                                <>
+                                <div className="input-group" style={{ marginBottom: 0 }}>
+                                    <label className="label">Subcity / Area</label>
+                                    <input
+                                        className="input-field"
+                                        placeholder="e.g. Bole, Kazanchis"
+                                        required
+                                        value={formData.subcity}
+                                        onChange={e => setFormData({ ...formData, subcity: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Company Name - Mandatory for SME */}
+                            <div className="input-group" style={{ marginBottom: 0 }}>
+                                <label className="label">
+                                    Company / Organization {userType !== 'sme' && '(Optional)'}
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Building size={16} color="#64748b" style={{ position: 'absolute', left: '12px', top: '14px' }} />
+                                    <input
+                                        className="input-field"
+                                        style={{ paddingLeft: '2.5rem' }}
+                                        placeholder={userType === 'sme' ? "Required for Business Profile" : "Acme Corp"}
+                                        required={userType === 'sme'}
+                                        value={formData.company}
+                                        onChange={e => setFormData({ ...formData, company: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            {!isReport && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <div className="input-group" style={{ marginBottom: 0 }}>
                                         <label className="label">Phone Number</label>
                                         <div style={{ position: 'relative' }}>
@@ -192,7 +211,7 @@ const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType }) => {
                                         </div>
                                     </div>
                                     <div className="input-group" style={{ marginBottom: 0 }}>
-                                        <label className="label">Preferred Contact Time</label>
+                                        <label className="label">Preferred Time</label>
                                         <div style={{ position: 'relative' }}>
                                             <Calendar size={16} color="#64748b" style={{ position: 'absolute', left: '12px', top: '14px' }} />
                                             <select
@@ -202,13 +221,13 @@ const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType }) => {
                                                 onChange={e => setFormData({ ...formData, preferredTime: e.target.value })}
                                             >
                                                 <option value="">Anytime</option>
-                                                <option value="Morning">Morning (9am - 12pm)</option>
-                                                <option value="Afternoon">Afternoon (2pm - 5pm)</option>
-                                                <option value="Evening">Evening (5pm - 7pm)</option>
+                                                <option value="Morning">Morning</option>
+                                                <option value="Afternoon">Afternoon</option>
+                                                <option value="Evening">Evening</option>
                                             </select>
                                         </div>
                                     </div>
-                                </>
+                                </div>
                             )}
 
                             <button

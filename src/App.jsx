@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings, Zap, CheckCircle, AlertTriangle, Info, ArrowLeft, HelpCircle, Home, FileText, X } from 'lucide-react';
 import Calculator from './components/Calculator';
 import GuidedCalculator from './components/GuidedCalculator';
@@ -9,6 +10,7 @@ import AdvisoryModal from './components/AdvisoryModal';
 import SiteVisitForm from './components/SiteVisitForm';
 import EnergyFlow from './components/EnergyFlow';
 import LoanCalculator from './components/LoanCalculator';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import { calculateSystemSize, calculateFinancials, calculateHourlyEnergy, checkOptimality, DEFAULT_CONSTANTS } from './utils/logic';
 import { supabase } from './utils/supabaseClient';
 
@@ -49,6 +51,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+    const { t, i18n } = useTranslation();
     const [step, setStep] = useState(0); // 0: Home, 1: Input, 2: Capture, 3: Results, 4: Site Visit
     const [userType, setUserType] = useState('residential'); // 'residential' | 'sme'
     const [constants, setConstants] = useState(() => {
@@ -117,11 +120,12 @@ function App() {
         try {
             const size = calculateSystemSize(appliances, outageHours, phase, constants);
             const money = calculateFinancials(size, { outageHoursPerDay: outageHours }, constants);
-            const hourly = calculateHourlyEnergy(size, size.totalDailyEnergyWh);
+            // Pass userType and appliances to determine specific load profile (e.g. coffee shop)
+            const hourlyResult = calculateHourlyEnergy(size, size.totalDailyEnergyWh, userType, appliances);
             const optim = checkOptimality(size, outageHours);
 
-            if (!size || !money || !hourly) {
-                console.error("Calculation returned incomplete data", { size, money, hourly });
+            if (!size || !money || !hourlyResult || !hourlyResult.data) {
+                console.error("Calculation returned incomplete data", { size, money, hourlyResult });
                 return;
             }
 
@@ -129,7 +133,8 @@ function App() {
                 systemSize: size,
                 financials: money,
                 comparisonData: money.comparisonData,
-                hourlyData: hourly
+                hourlyData: hourlyResult.data,
+                hourlyNote: hourlyResult.note
             });
             setWarnings(optim);
             // setShowLeadCapture(true); // REMOVED: No longer gatekeeping results
@@ -186,17 +191,31 @@ function App() {
         }, 100);
     };
 
+    const [showAdminLogin, setShowAdminLogin] = useState(false);
+    const [adminPasswordInput, setAdminPasswordInput] = useState('');
+
     const handleAdminClick = () => {
-        const password = prompt("Please enter Admin Password:");
-        if (password === "admin123") { // Simple protection for now
+        setShowAdminLogin(true);
+    };
+
+    const handleAdminLoginSubmit = (e) => {
+        e.preventDefault();
+        if (adminPasswordInput === "admin123") {
+            setShowAdminLogin(false);
             setIsAdminOpen(true);
-        } else if (password !== null) {
+            setAdminPasswordInput('');
+        } else {
             alert("Incorrect Password");
         }
     };
 
+
+    // Font fix for Amharic
+    const isAmharic = i18n.language === 'am';
+    const contentStyle = isAmharic ? { fontFamily: '"Noto Sans Ethiopic", sans-serif', lineHeight: 1.6 } : {};
+
     return (
-        <div className="app-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="app-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', ...contentStyle }}>
             <ErrorBoundary>
                 {/* Header */}
                 <header style={{
@@ -225,29 +244,32 @@ function App() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {/* Language Switcher */}
+                            <LanguageSwitcher />
+
                             <button
                                 onClick={() => setStep(0)}
                                 className="btn-icon-only"
-                                title="Home"
+                                title={t('common.home')}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
                             >
-                                <Home size={20} /> <span className="hide-mobile">Home</span>
+                                <Home size={20} /> <span className="hide-mobile">{t('common.home')}</span>
                             </button>
                             <button
                                 onClick={() => setShowManual(true)}
                                 className="btn-icon-only"
-                                title="User Manual"
+                                title={t('common.help')}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
                             >
-                                <HelpCircle size={20} /> <span className="hide-mobile">Help</span>
+                                <HelpCircle size={20} /> <span className="hide-mobile">{t('common.help')}</span>
                             </button>
                             <button
                                 onClick={() => setShowAbout(true)}
                                 className="btn-icon-only"
-                                title="About CRS"
+                                title={t('common.about')}
                                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}
                             >
-                                <Info size={20} /> <span className="hide-mobile">About</span>
+                                <Info size={20} /> <span className="hide-mobile">{t('common.about')}</span>
                             </button>
 
                             <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.2)', margin: '0 0.5rem' }}></div>
@@ -255,7 +277,7 @@ function App() {
                             <button
                                 onClick={handleAdminClick}
                                 className="btn-icon-only"
-                                title="Advanced Settings"
+                                title={t('common.admin')}
                             >
                                 <Settings size={20} />
                             </button>
@@ -281,7 +303,7 @@ function App() {
                                         filter: 'drop-shadow(0 0 20px rgba(220, 38, 38, 0.2))'
                                     }}
                                 />
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '2px', color: '#94a3b8', marginBottom: '1.5rem' }}>COMPLETE RENEWABLE SOLUTIONS</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '2px', color: '#94a3b8', marginBottom: '1.5rem' }}>{t('home.subtitle')}</div>
                                 <h1 style={{
                                     fontSize: '3.5rem',
                                     fontWeight: 800,
@@ -291,10 +313,10 @@ function App() {
                                     WebkitTextFillColor: 'transparent',
                                     textShadow: '0 0 30px rgba(255,255,255,0.1)'
                                 }}>
-                                    Secure Power. Secure Future.
+                                    {t('home.title')}
                                 </h1>
                                 <p style={{ fontSize: '1.25rem', color: '#94a3b8', maxWidth: '700px', margin: '0 auto', lineHeight: '1.6' }}>
-                                    Experience the luxury of generating your own clean energy. Break free from the unreliable grid and the rising costs of diesel fuel.
+                                    {t('home.description')}
                                 </p>
                             </div>
 
@@ -321,9 +343,9 @@ function App() {
                                     }}>
                                         <AlertTriangle size={24} />
                                     </div>
-                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Rising Diesel Costs</h3>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>{t('home.feature_1_title')}</h3>
                                     <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                                        Traditional generators are a financial drain. With fuel prices skyrocketing and high maintenance requirements, every hour of outage costs you more.
+                                        {t('home.feature_1_desc')}
                                     </p>
                                 </div>
 
@@ -343,9 +365,9 @@ function App() {
                                     }}>
                                         <Settings size={24} />
                                     </div>
-                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Renewable Independence</h3>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>{t('home.feature_2_title')}</h3>
                                     <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                                        Generate your own power with our premium hybrid systems. Enjoy silent, automatic backup that reduces your carbon footprint and grid dependency.
+                                        {t('home.feature_2_desc')}
                                     </p>
                                 </div>
 
@@ -365,15 +387,15 @@ function App() {
                                     }}>
                                         <Zap size={24} />
                                     </div>
-                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>Lower Bills, Higher Luxury</h3>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem' }}>{t('home.feature_3_title')}</h3>
                                     <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                                        Invest in an asset, not a liability. Drastically reduce your electricity bills while enjoying the luxury of uninterrupted power in your home or office.
+                                        {t('home.feature_3_desc')}
                                     </p>
                                 </div>
                             </div>
 
                             <p style={{ fontSize: '1.1rem', color: '#cbd5e1', marginBottom: '2rem', fontWeight: 500 }}>
-                                design your custom solution below
+                                {t('home.cta')}
                             </p>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '700px', margin: '0 auto' }}>
@@ -391,9 +413,9 @@ function App() {
                                     <div style={{ width: '50px', height: '50px', background: 'var(--color-primary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
                                     </div>
-                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>Residential</h3>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>{t('user_type.residential_title')}</h3>
                                     <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                                        For homes and apartments. Backup critical lights, fridge, and entertainment.
+                                        {t('user_type.residential_desc')}
                                     </p>
                                 </button>
 
@@ -411,9 +433,9 @@ function App() {
                                     <div style={{ width: '50px', height: '50px', background: 'var(--color-secondary)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M12 6h.01" /><path d="M12 10h.01" /><path d="M12 14h.01" /><path d="M16 10h.01" /><path d="M16 14h.01" /><path d="M8 10h.01" /><path d="M8 14h.01" /></svg>
                                     </div>
-                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>Business / SME</h3>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'white' }}>{t('user_type.sme_title')}</h3>
                                     <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                                        For offices, shops, and clinics. Keep computers, servers, and security running.
+                                        {t('user_type.sme_desc')}
                                     </p>
                                 </button>
                             </div>
@@ -455,10 +477,12 @@ function App() {
                                     financials={results.financials}
                                     comparisonData={results.comparisonData}
                                     hourlyData={results.hourlyData}
+                                    hourlyNote={results.hourlyNote}
                                     onOpenAdvisory={handleOpenAdvisory}
                                     onFinance={() => setShowLoanCalculator(true)}
                                     userType={userType}
                                     outageHours={outageHours}
+                                    constants={constants}
                                 />
                             </div>
                         </div>
@@ -553,6 +577,37 @@ function App() {
                     )}
 
                 </main>
+
+                {/* ADMIN LOGIN MODAL */}
+                {showAdminLogin && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 3000,
+                        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center'
+                    }}>
+                        <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <Settings size={20} /> Admin Access
+                                </h3>
+                                <button onClick={() => setShowAdminLogin(false)} className="btn-icon-only"><X size={20} color="#94a3b8" /></button>
+                            </div>
+                            <form onSubmit={handleAdminLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label className="label">Enter Password</label>
+                                    <input
+                                        type="password"
+                                        className="input-field"
+                                        autoFocus
+                                        value={adminPasswordInput}
+                                        onChange={(e) => setAdminPasswordInput(e.target.value)}
+                                        placeholder="••••••••"
+                                    />
+                                </div>
+                                <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem' }}>Unlock Dashboard</button>
+                            </form>
+                        </div>
+                    </div>
+                )}
 
                 <AdminPanel
                     isOpen={isAdminOpen}

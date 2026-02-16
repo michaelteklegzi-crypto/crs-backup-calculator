@@ -145,8 +145,9 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
             // 1. Save current settings first to ensure logic uses latest
             await saveCostSettings();
 
-            // 2. Run Engine
-            const result = await runCostEngine(); // Returns { exchangeRate, costs: { COST_UNIT_PV... } }
+            // 2. Run Engine (with Hedge)
+            const hedge = localConstants.EXCHANGE_RATE_HEDGE_PERCENT || 0;
+            const result = await runCostEngine(hedge); // Returns { exchangeRate, effectiveRate, costs: { COST_UNIT_PV... } }
 
             // 3. Update Local Constants
             const newConstants = { ...localConstants, ...result.costs };
@@ -163,7 +164,7 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                 .map(([k, v]) => `${k.replace('COST_UNIT_', '')}: ${new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB' }).format(v)}`)
                 .join('\n');
 
-            alert(`Costs recalculated successfully using Exchange Rate: ${result.exchangeRate.toFixed(4)} ETB/USD.\n\nNew Unit Costs:\n${details}`);
+            alert(`Costs recalculated successfully!\n\nBase Rate: ${result.exchangeRate.toFixed(2)} ETB/USD\nHedge Buffer: ${hedge}%\nEffective Rate: ${(result.effectiveRate || result.exchangeRate).toFixed(2)} ETB/USD\n\nNew Unit Costs:\n${details}`);
 
         } catch (err) {
             console.error("Cost Calculation Logic Failed:", err);
@@ -398,23 +399,50 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                     {/* COST ENGINE TAB (NEW) */}
                     {activeTab === 'costs' && (
                         <div className="animate-fade-in">
-                            {/* Exchange Rate Status */}
-                            <div className="card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                                <div>
-                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Activity size={20} color="var(--color-accent-emerald)" /> Live Exchange Rate Mode
+                            {/* Exchange Rate Status & Settings */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                                {/* Status Card */}
+                                <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Activity size={20} color="var(--color-accent-emerald)" /> Live Exchange Rate
                                     </h3>
-                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                                        Calculations use daily market rates automatically.
-                                    </p>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>USD / ETB Rate</div>
-                                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'white' }}>
-                                        {exchangeRate ? exchangeRate.rate_sell.toFixed(2) : '---'}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>Market Rate (USD/ETB)</div>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'white' }}>
+                                                {exchangeRate ? exchangeRate.rate_sell.toFixed(2) : '---'}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>Effective Rate (Hedged)</div>
+                                            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-accent-emerald)' }}>
+                                                {exchangeRate ? (exchangeRate.rate_sell * (1 + (localConstants.EXCHANGE_RATE_HEDGE_PERCENT / 100))).toFixed(2) : '---'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 'auto' }}>
                                         Last Updated: {exchangeRate ? new Date(exchangeRate.fetched_at).toLocaleTimeString() : 'Never'}
+                                    </div>
+                                </div>
+
+                                {/* Risk Settings Card */}
+                                <div className="card" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Settings size={20} /> Risk & Volatility
+                                    </h3>
+                                    <div>
+                                        <label className="label">Exchange Rate Hedge (%)</label>
+                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                            <input
+                                                type="number"
+                                                className="input-field"
+                                                value={localConstants.EXCHANGE_RATE_HEDGE_PERCENT}
+                                                onChange={(e) => handleChange('EXCHANGE_RATE_HEDGE_PERCENT', e.target.value)}
+                                            />
+                                            <span style={{ color: '#64748b', fontSize: '0.9rem' }}>
+                                                Buffer added to base rate to protect against currency devaluation during procurement. default 15%.
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -457,12 +485,56 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                                                 <input type="number" className="input-field" style={{ width: '100px' }} value={item.margin_percent} onChange={(e) => handleCostSettingChange(item.id, 'margin_percent', e.target.value)} />
                                             </div>
                                             <div style={{ textAlign: 'right' }}>
-                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Current Calculated Unit Cost</div>
-                                                <div style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600 }}>
-                                                    {formatCurrency(
-                                                        item.equipment_type === 'pv_panel' ? localConstants.COST_UNIT_PV_PANEL :
-                                                            item.equipment_type === 'battery_unit' ? localConstants.COST_UNIT_BATTERY :
-                                                                localConstants.COST_UNIT_INVERTER
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.25rem' }}>Live Projections</div>
+
+                                                {(() => {
+                                                    const baseRate = exchangeRate ? Number(exchangeRate.rate_sell) : 0;
+                                                    const hedge = Number(localConstants.EXCHANGE_RATE_HEDGE_PERCENT) || 0;
+                                                    const effectiveRate = baseRate * (1 + (hedge / 100));
+
+                                                    const importUsd = Number(item.import_usd) || 0;
+                                                    const shippingUsd = Number(item.shipping_usd) || 0;
+                                                    const dutyPercent = Number(item.customs_duty_percent) || 0;
+                                                    const inlandEtb = Number(item.inland_transport_etb) || 0;
+                                                    const handlingEtb = Number(item.port_handling_etb) || 0;
+                                                    const marginPercent = Number(item.margin_percent) || 0;
+
+                                                    // Helper to calc final cost
+                                                    const getCost = (rate) => {
+                                                        const importEtb = importUsd * rate;
+                                                        const shippingEtb = shippingUsd * rate;
+                                                        const dutyEtb = importEtb * (dutyPercent / 100);
+                                                        const baseLanded = importEtb + shippingEtb + dutyEtb + inlandEtb + handlingEtb;
+                                                        return baseLanded * (1 + (marginPercent / 100));
+                                                    };
+
+                                                    const bankCost = getCost(baseRate);
+                                                    const hedgedCost = getCost(effectiveRate);
+
+                                                    return (
+                                                        <>
+                                                            <div title={`Based on ${baseRate.toFixed(2)} ETB/USD`} style={{ fontSize: '0.9rem', color: '#cbd5e1', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                                <span>Bank Rate:</span>
+                                                                <span style={{ fontFamily: 'monospace' }}>{formatCurrency(bankCost)}</span>
+                                                            </div>
+                                                            <div title={`Based on ${effectiveRate.toFixed(2)} ETB/USD (Hedge: ${hedge}%)`} style={{ fontSize: '1.25rem', color: 'var(--color-accent-emerald)', fontWeight: 600, margin: '0.25rem 0' }}>
+                                                                Hedged: {formatCurrency(hedgedCost)}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                    Stored: {formatCurrency(
+                                                        (() => {
+                                                            switch (item.equipment_type) {
+                                                                case 'pv_panel': return localConstants.COST_UNIT_PV_PANEL;
+                                                                case 'battery_unit': return localConstants.COST_UNIT_BATTERY;
+                                                                case 'inverter_1ph_5kw': return localConstants.COST_UNIT_INVERTER;
+                                                                case 'inverter_3ph_15kw': return localConstants.COST_UNIT_INVERTER_3PH;
+                                                                default: return 0;
+                                                            }
+                                                        })()
                                                     )}
                                                 </div>
                                             </div>

@@ -1,0 +1,77 @@
+{
+    "home": {
+        "title": "Secure Power. Secure Future.",
+        "subtitle": "Complete Renewable Solutions",
+        "description": "Experience the luxury of generating your own clean energy. Break free from the unreliable grid and the rising costs of diesel fuel.",
+        "cta": "design your custom solution below",
+        "feature_1_title": "Rising Diesel Costs",
+        "feature_1_desc": "Traditional generators are a financial drain. With fuel prices skyrocketing and high maintenance requirements, every hour of outage costs you more.",
+        "feature_2_title": "Renewable Independence",
+        "feature_2_desc": "Generate your own power with our premium hybrid systems. Enjoy silent, automatic backup that reduces your carbon footprint and grid dependency.",
+        "feature_3_title": "Lower Bills, Higher Luxury",
+        "feature_3_desc": "Invest in an asset, not a liability. Drastically reduce your electricity bills while enjoying the luxury of uninterrupted power in your home or office."
+    },
+    "user_type": {
+        "residential_title": "Residential",
+        "residential_desc": "For homes and apartments. Backup critical lights, fridge, and entertainment.",
+        "sme_title": "Business / SME",
+        "sme_desc": "For offices, shops, and clinics. Keep computers, servers, and security running."
+    },
+    "common": {
+        "loading": "Loading translation...",
+        "home": "Home",
+        "help": "Help",
+        "about": "About",
+        "admin": "Admin",
+        "back": "Back",
+        "next": "Next Step",
+        "submit": "Calculate",
+        "language": "Language",
+        "generate_report": "Generate Architecture",
+        "download_proposal": "Download Technical Proposal",
+        "finance_application": "Finance Application",
+        "schedule_audit": "Schedule Site Audit"
+    },
+    "load": {
+        "title": "Define Critical Loads",
+        "subtitle": "Precision inputs ensure accurate inverter sizing.",
+        "custom_device": "Custom Device",
+        "presets": "Apply Preset",
+        "runtime_title": "Backup Duration",
+        "runtime_subtitle": "How long do you need these appliances to run during a power outage?",
+        "review_title": "System Architecture Review",
+        "review_subtitle": "Verify your load profile and connection type.",
+        "phase_title": "Grid Connection Phase",
+        "phase_1": "Single Phase",
+        "phase_3": "Three Phase",
+        "phase_unknown": "I Don't Know"
+    },
+    "results": {
+        "title": "Power Architecture Report",
+        "engineered_for": "Engineered for {{type}}",
+        "autonomy_target": "Autonomy Target",
+        "rated_peak_load": "Rated Peak Load",
+        "daily_demand": "Daily Demand",
+        "core_infrastructure": "Core Infrastructure",
+        "battery_storage": "Usable Storage Capacity",
+        "inverter_output": "Inverter Rated Output",
+        "pv_peak_power": "PV Array Peak Power",
+        "investment_overview": "Investment Overview",
+        "estimated_capex": "Estimated System CAPEX",
+        "roi_years": "Projected ROI",
+        "annual_savings": "Annual Savings",
+        "tco_ownership": "5-Year Total Cost (ownership)",
+        "vs_diesel": "vs. Diesel Generator",
+        "test_scenario": "Test Scenario: Add 20% Future Growth Buffer"
+    },
+    "admin": {
+        "title": "Admin Dashboard",
+        "cost_engine": "Cost Engine",
+        "leads": "Leads",
+        "proposals": "Proposals",
+        "settings": "System Settings",
+        "update_costs": "Update Costs using Live Exchange Rate",
+        "manual_override": "Manual Override",
+        "save_changes": "Save Changes"
+    }
+}

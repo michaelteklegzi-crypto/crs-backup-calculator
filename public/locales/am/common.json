@@ -1,0 +1,77 @@
+{
+    "home": {
+        "title": "ከጄኔሬተር ነፃ ህይወት። አስተማማኝ ነገ።",
+        "subtitle": "የተሟላ የፀሐይ ኃይል መፍትሄዎች",
+        "description": "የራስዎን ንጹህ ኃይል በማምረት ምቾት ይኑርዎት። ከአስተማማኝ ያልሆነ የመብራት ኔትወርክ እና ከናረ የነዳጅ ወጪ ይላቀቁ።",
+        "cta": "የእርስዎን ምርጫ ከታች ይጀምሩ",
+        "feature_1_title": "የዲዝል ዋጋ ንረት",
+        "feature_1_desc": "ባህላዊ ጄኔሬተሮች በገንዘብ ተመላሽ የላቸውም። ከቀን ወደ ቀን በሚጨምረው የነዳጅ ዋጋ ምክንያት፣ መብራት በሚጠፋበት ጊዜ ወጪዎን ይጨምራል።",
+        "feature_2_title": "ተፈጥሮአዊ ነፃነት",
+        "feature_2_desc": "በራስዎ የፀሐይ ኃይል ስርዓቶች የኃይል ምንጭ ይሁኑ። ፀጥ ያለ፣ አውቶማቲክ እና አስተማማኝ በሆነ መንገድ የኤሌክትሪክ ፍላጎትዎን ያሟሉ።",
+        "feature_3_title": "ዝቅተኛ ሂሳብ፣ ከፍተኛ ምቾት",
+        "feature_3_desc": "ንብረት ላይ እንጂ እዳ ላይ ኢንቨስት አያድርጉ። የኤሌክትሪክ ሂሳብዎን በከፍተኛ ሁኔታ ይቀንሱ፣ በተመሳሳይ ጊዜ የተረጋጋ የመብራት አገልግሎት ያግኙ።"
+    },
+    "user_type": {
+        "residential_title": "መኖሪያ ቤት",
+        "residential_desc": "ለአፓርታማዎች እና ለቪላዎች። ለመብራት፣ ፍሪጅ እና መዝናኛ ያገለግላል።",
+        "sme_title": "ንግድ / ድርጅት",
+        "sme_desc": "ለቢሮዎች፣ ሱቆች እና ክሊኒኮች። ኮምፒውተሮችን እና ሰርቨሮችን ለማሰራት።"
+    },
+    "common": {
+        "loading": "እባክዎ ይጠብቁ...",
+        "home": "ጠቅላላ ገጽ",
+        "help": "እርዳታ",
+        "about": "ስለ",
+        "admin": "አድሚን",
+        "back": "ተመለስ",
+        "next": "ቀጣይ",
+        "submit": "አስላ",
+        "language": "ቋንቋ",
+        "generate_report": "ሪፖርት አውጣ",
+        "download_proposal": "ቴክኒካል ፕሮፖዛል አውርድ",
+        "finance_application": "የብድር ማመልከቻ",
+        "schedule_audit": "የቦታ ቅኝት ቀጠሮ"
+    },
+    "load": {
+        "title": "የኤሌክትሪክ እቃዎችን ይምረጡ",
+        "subtitle": "ትክክለኛ መረጃ ለትክክለኛ የኢንቨርተር መጠን ወሳኝ ነው።",
+        "custom_device": "ልዩ ዕቃ ጨምር",
+        "presets": "ቅድመ ዝግጅት",
+        "runtime_title": "የመጠባበቂያ ሰዓት",
+        "runtime_subtitle": "መብራት ሲጠፋ እነዚህ እቃዎች ለምን ያህል ሰአት መስራት አለባቸው?",
+        "review_title": "ግምገማ",
+        "review_subtitle": "ከመስራትዎ በፊት የእርስዎን ምርጫ ያረጋግጡ።",
+        "phase_title": "የመስመር አይነት (Phase)",
+        "phase_1": "Single Phase (አንድ)",
+        "phase_3": "Three Phase (ሶስት)",
+        "phase_unknown": "እርግጠኛ አይደለሁም"
+    },
+    "results": {
+        "title": "የኃይል ስርዓት ሪፖርት",
+        "engineered_for": "ለ{{type}} የተዘጋጀ",
+        "autonomy_target": "የመጠባበቂያ ዒላማ",
+        "rated_peak_load": "ከፍተኛ የኃይል መጠን",
+        "daily_demand": "ዕለታዊ ፍላጎት (Daily Demand)",
+        "core_infrastructure": "ዋና መሰረተ ልማት (Core Infrastructure)",
+        "battery_storage": "የባትሪ አቅም (Storage Capacity)",
+        "inverter_output": "የኢንቨርተር አቅም (Size)",
+        "pv_peak_power": "የፓነል ብዛት (PV Total)",
+        "investment_overview": "የኢንቨስትመንት ጠቅላላ",
+        "estimated_capex": "ግምታዊ የሲስተም ዋጋ (CAPEX)",
+        "roi_years": "የወጪ ተመላሽ ጊዜ (ROI)",
+        "annual_savings": "አመታዊ ቁጠባ",
+        "tco_ownership": "የ5 ዓመት ጠቅላላ ወጪ (Ownership)",
+        "vs_diesel": "ከ ዲዝል ጄኔሬተር አንጻር",
+        "test_scenario": "ሙከራ፡ የ20% የወደፊት ዕድገት ጨምር"
+    },
+    "admin": {
+        "title": "አድሚን ዳሽቦርድ",
+        "cost_engine": "የዋጋ ማሽን",
+        "leads": "ተገልጋዮች (Leads)",
+        "proposals": "ፕሮፖዛሎች",
+        "settings": "ቅንብሮች",
+        "update_costs": "ዋጋዎችን በቀጥታ የምንዛሬ ተመን አዘምን",
+        "manual_override": "በእጅ መቀየር",
+        "save_changes": "ለውጦችን አስቀምጥ"
+    }
+}

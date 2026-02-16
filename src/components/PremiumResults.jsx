@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { calculateSystemSize, calculateFinancials, DEFAULT_CONSTANTS } from '../utils/logic'; // Import logic functions
 
-const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, onGetProposal, onFinance, onOpenAdvisory, userType, outageHours }) => {
+const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, hourlyNote, onGetProposal, onFinance, onOpenAdvisory, userType, outageHours, constants = DEFAULT_CONSTANTS }) => {
     const [activeSection, setActiveSection] = useState('overview'); // 'overview' | 'financial' | 'reliability'
     const [showBreakdown, setShowBreakdown] = useState(false);
     const [technicalView, setTechnicalView] = useState(false);
@@ -59,8 +59,8 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, on
 
         const currentPhase = is3Phase ? '3-phase' : '1-phase';
 
-        const futureSize = calculateSystemSize(syntheticProfile, outageHours, currentPhase, DEFAULT_CONSTANTS);
-        const futureFinance = calculateFinancials(futureSize, { outageHoursPerDay: outageHours }, DEFAULT_CONSTANTS);
+        const futureSize = calculateSystemSize(syntheticProfile, outageHours, currentPhase, constants);
+        const futureFinance = calculateFinancials(futureSize, { outageHoursPerDay: outageHours }, constants);
 
         setFutureData({
             size: futureSize,
@@ -105,6 +105,17 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, on
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
                                         <span>Inverter</span> <span>{systemSize.recommended.inverterKw} kW</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1.5rem', marginTop: 'auto' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                                        <CheckCircle size={16} color="var(--color-primary)" /> PV - 20 Years
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                                        <CheckCircle size={16} color="var(--color-primary)" /> Battery - 10 Years
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                                        <ShieldCheck size={16} color="var(--color-accent-emerald)" /> Total System - 5 Years
                                     </div>
                                 </div>
                             </div>
@@ -264,7 +275,7 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, on
 
                     {/* 4️⃣ RELIABILITY METRICS */}
                     <div className="card" style={{ background: 'var(--color-surface-matte)', border: '1px solid var(--color-border-glass)', padding: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <Activity size={20} color="var(--color-accent-emerald)" /> Performance Vectors
                             </h2>
@@ -276,6 +287,11 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, on
                                 Show Battery State (SoC)
                             </div>
                         </div>
+                        {hourlyNote && (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Info size={14} color="var(--color-accent-electric-blue)" /> {hourlyNote}
+                            </div>
+                        )}
 
                         {/* Interactive Graph Area */}
                         <div style={{ height: '300px', width: '100%' }}>
@@ -484,30 +500,48 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, on
                                 onClick={onFinance}
                                 className="card"
                                 style={{
-                                    padding: '1rem', textAlign: 'center', cursor: 'pointer',
-                                    border: '1px solid var(--color-border-glass)', background: 'transparent',
-                                    color: 'white', transition: 'all 0.2s'
+                                    padding: '1.25rem', textAlign: 'center', cursor: 'pointer',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%)',
+                                    color: 'white', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border-glass)'}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
                             >
-                                <DollarSign size={20} style={{ marginBottom: '0.5rem', margin: '0 auto', display: 'block' }} />
-                                <span style={{ fontSize: '0.9rem' }}>Finance Application</span>
+                                <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+                                    <DollarSign size={24} color="#60a5fa" />
+                                </div>
+                                <span style={{ fontSize: '1rem', fontWeight: 600 }}>Finance Application</span>
                             </button>
 
                             <button
                                 onClick={() => onOpenAdvisory('consultation')}
                                 className="card"
                                 style={{
-                                    padding: '1rem', textAlign: 'center', cursor: 'pointer',
-                                    border: '1px solid var(--color-border-glass)', background: 'transparent',
-                                    color: 'white', transition: 'all 0.2s'
+                                    padding: '1.25rem', textAlign: 'center', cursor: 'pointer',
+                                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                                    background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%)',
+                                    color: 'white', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-accent-emerald)'}
-                                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border-glass)'}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = 'var(--color-accent-emerald)';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
                             >
-                                <FileText size={20} style={{ marginBottom: '0.5rem', margin: '0 auto', display: 'block' }} />
-                                <span style={{ fontSize: '0.9rem' }}>Schedule Site Audit</span>
+                                <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+                                    <FileText size={24} color="#34d399" />
+                                </div>
+                                <span style={{ fontSize: '1rem', fontWeight: 600 }}>Schedule Consultation</span>
                             </button>
                         </div>
                     </div>
