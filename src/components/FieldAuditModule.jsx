@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { 
     Activity, ArrowLeft, CheckCircle, ChevronRight, FileText, 
-    Plus, Save, Settings, AlertTriangle, Send, Upload 
+    Plus, Save, Settings, AlertTriangle, Send
 } from 'lucide-react';
 import { 
     calculatePowerKW, calculateThreePhaseMetrics, 
-    calculateEnergyKWh, calculateEquipmentLoad, runCrossCheck 
+    calculateEquipmentLoad, runCrossCheck 
 } from '../utils/fieldLogic';
 
 const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
