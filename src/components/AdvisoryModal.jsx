@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, CheckCircle, MessageSquare, ShieldCheck, Mail, MapPin, Phone, Building, Calendar, Lock } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
-const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType }) => {
+const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType, results }) => {
     const [step, setStep] = useState('form'); // 'form' | 'success'
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -27,26 +27,37 @@ const AdvisoryModal = ({ isOpen, onClose, mode = 'report', userType }) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate API call / Supabase insert
         try {
-            const table = mode === 'report' ? 'leads' : 'site_visits';
+            // First, Insert the Lead
+            const { data: leadData, error: leadError } = await supabase.from('leads')
+                .insert([{
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone || null,
+                    company: formData.company || null,
+                    location: formData.city || null,
+                    source: userType,
+                    status: 'new'
+                }])
+                .select();
 
-            // For now, we just treat everything as a lead capture with different intent notes
-            const leadData = {
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone || null,
-                company: formData.company || null,
-                city: formData.city || null,
-                source: userType,
-                intent: mode === 'report' ? 'Download Report' : 'Consultation Request',
-                preferred_time: formData.preferredTime || null,
-                created_at: new Date().toISOString()
-            };
+            if (leadError) throw leadError;
 
-            // In a real app, we'd upsert this lead into Supabase
-            // For this demo, we'll just simulate a delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Second, if we have active results (which we do if mode='report'), save the proposal
+            if (results && leadData && leadData.length > 0) {
+                const leadId = leadData[0].id;
+                
+                const { error: propError } = await supabase.from('proposals').insert([{
+                    lead_id: leadId,
+                    system_size_pv_kw: results.systemSize?.recommended?.pvKw || 0,
+                    system_size_battery_kwh: results.systemSize?.recommended?.batteryKwh || 0,
+                    system_size_inverter_kw: results.systemSize?.recommended?.inverterKw || 0,
+                    total_capex: results.financials?.capexSolar || 0,
+                    analysis_json: results
+                }]);
+                
+                if (propError) console.error("Error saving proposal snapshot:", propError);
+            }
 
             setStep('success');
         } catch (error) {

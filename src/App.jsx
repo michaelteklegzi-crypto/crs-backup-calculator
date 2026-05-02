@@ -11,6 +11,7 @@ import SiteVisitForm from './components/SiteVisitForm';
 import EnergyFlow from './components/EnergyFlow';
 import LoanCalculator from './components/LoanCalculator';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import { generatePDFReport } from './utils/pdfExport';
 import { calculateSystemSize, calculateFinancials, calculateHourlyEnergy, checkOptimality, DEFAULT_CONSTANTS } from './utils/logic';
 import { supabase } from './utils/supabaseClient';
 
@@ -90,29 +91,40 @@ function App() {
     useEffect(() => {
         if (userType === 'residential') {
             setAppliances([
-                { id: 1, name: 'LED Bulbs (Pack)', watts: 50, quantity: 1, hours: 4 },
-                { id: 2, name: 'Refrigerator', watts: 150, quantity: 1, hours: 24 },
-                { id: 3, name: 'WiFi Router', watts: 10, quantity: 1, hours: 24 },
-                { id: 4, name: 'TV (LED)', watts: 80, quantity: 1, hours: 4 },
+                { id: 1, name: 'LED Bulbs (Pack)', watts: 50, quantity: 1, hours: 4, dutyCycle: 1 },
+                { id: 2, name: 'Refrigerator', watts: 150, quantity: 1, hours: 24, dutyCycle: 0.3 },
+                { id: 3, name: 'WiFi Router', watts: 10, quantity: 1, hours: 24, dutyCycle: 1 },
+                { id: 4, name: 'TV (LED)', watts: 80, quantity: 1, hours: 4, dutyCycle: 1 },
             ]);
         } else {
             setAppliances([
-                { id: 1, name: 'Desktop Computer', watts: 200, quantity: 2, hours: 8 },
-                { id: 2, name: 'Printer', watts: 300, quantity: 1, hours: 1 },
-                { id: 3, name: 'WiFi Router', watts: 15, quantity: 1, hours: 24 },
-                { id: 4, name: 'Office Lighting', watts: 100, quantity: 1, hours: 8 },
-                { id: 5, name: 'Coffee Machine', watts: 1000, quantity: 1, hours: 0.5 },
+                { id: 1, name: 'Desktop Computer', watts: 200, quantity: 2, hours: 8, dutyCycle: 1 },
+                { id: 2, name: 'Printer', watts: 300, quantity: 1, hours: 1, dutyCycle: 1 },
+                { id: 3, name: 'WiFi Router', watts: 15, quantity: 1, hours: 24, dutyCycle: 1 },
+                { id: 4, name: 'Office Lighting', watts: 100, quantity: 1, hours: 8, dutyCycle: 1 },
+                { id: 5, name: 'Coffee Machine', watts: 1000, quantity: 1, hours: 0.5, dutyCycle: 1 },
             ]);
         }
     }, [userType]);
 
-    // Fetch Banks
+    // Fetch Banks & Appliances
+    const [applianceCatalog, setApplianceCatalog] = useState([]);
+    const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+
+    const fetchApplianceCatalog = async () => {
+        setIsLoadingCatalog(true);
+        const { data, error } = await supabase.from('appliances_catalog').select('*');
+        if (data && !error) setApplianceCatalog(data);
+        setIsLoadingCatalog(false);
+    };
+
     useEffect(() => {
         const fetchBanks = async () => {
             const { data, error } = await supabase.from('banks').select('*').eq('active', true);
             if (data) setBanks(data);
         };
         fetchBanks();
+        fetchApplianceCatalog();
     }, []);
 
     // Calculation Handler
@@ -192,21 +204,56 @@ function App() {
     };
 
     const [showAdminLogin, setShowAdminLogin] = useState(false);
+    const [loginRole, setLoginRole] = useState(''); // 'admin' or 'field'
     const [adminPasswordInput, setAdminPasswordInput] = useState('');
+    const [fieldEngineerName, setFieldEngineerName] = useState('');
+    const [fieldEngineerContact, setFieldEngineerContact] = useState('');
+    
+    const [userRole, setUserRole] = useState(null); // 'admin' | 'field'
+    const [currentUser, setCurrentUser] = useState(null);
 
     const handleAdminClick = () => {
+        setLoginRole('');
         setShowAdminLogin(true);
     };
 
     const handleAdminLoginSubmit = (e) => {
         e.preventDefault();
-        if (adminPasswordInput === "admin123") {
+        if (loginRole === 'admin') {
+            if (adminPasswordInput === "admin123") {
+                setUserRole('admin');
+                setCurrentUser({ name: 'Admin', id: 'admin' });
+                setShowAdminLogin(false);
+                setIsAdminOpen(true);
+                setAdminPasswordInput('');
+            } else {
+                alert("Incorrect Password");
+            }
+        } else if (loginRole === 'field') {
+            if (!fieldEngineerName.trim()) {
+                alert("Please enter your name.");
+                return;
+            }
+            setUserRole('field');
+            setCurrentUser({ 
+                name: fieldEngineerName, 
+                contact: fieldEngineerContact,
+                id: 'FE_' + Date.now() 
+            });
             setShowAdminLogin(false);
             setIsAdminOpen(true);
-            setAdminPasswordInput('');
-        } else {
-            alert("Incorrect Password");
+            setFieldEngineerName('');
+            setFieldEngineerContact('');
         }
+    };
+    
+    const handlePushToCalculator = (data) => {
+        // Here we handle data pushed from the field audit module
+        // We set the step to GuidedCalculator (step 1)
+        // and ideally pre-fill some state. For now, just alert or navigate.
+        alert(`Received from Field Audit:\nPeak: ${data.peakKw.toFixed(2)} kW\nBattery: ${data.batteryKwh.toFixed(2)} kWh`);
+        setStep(1);
+        setIsAdminOpen(false);
     };
 
 
@@ -453,6 +500,8 @@ function App() {
                                 setOutageHours={setOutageHours}
                                 phase={phase}
                                 setPhase={setPhase}
+                                applianceCatalog={applianceCatalog}
+                                isLoadingCatalog={isLoadingCatalog}
                                 onCalculate={handleCalculate}
                                 onBack={() => setStep(0)}
                             />
@@ -496,6 +545,7 @@ function App() {
                         onClose={() => setShowAdvisory(false)}
                         mode={advisoryMode}
                         userType={userType}
+                        results={results}
                     />
 
                     {/* SITE VISIT FORM MODAL */}
@@ -578,7 +628,7 @@ function App() {
 
                 </main>
 
-                {/* ADMIN LOGIN MODAL */}
+                {/* ADMIN / FIELD LOGIN MODAL */}
                 {showAdminLogin && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 3000,
@@ -587,24 +637,66 @@ function App() {
                         <div className="card animate-fade-in" style={{ width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1.25rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <Settings size={20} /> Admin Access
+                                    <Settings size={20} /> System Access
                                 </h3>
                                 <button onClick={() => setShowAdminLogin(false)} className="btn-icon-only"><X size={20} color="#94a3b8" /></button>
                             </div>
-                            <form onSubmit={handleAdminLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label className="label">Enter Password</label>
-                                    <input
-                                        type="password"
-                                        className="input-field"
-                                        autoFocus
-                                        value={adminPasswordInput}
-                                        onChange={(e) => setAdminPasswordInput(e.target.value)}
-                                        placeholder="••••••••"
-                                    />
+                            
+                            {!loginRole ? (
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    <button onClick={() => setLoginRole('field')} className="btn-secondary" style={{ padding: '1rem', border: '1px solid var(--color-primary)', background: 'rgba(59, 130, 246, 0.1)', color: 'white' }}>
+                                        Field Engineer Login
+                                    </button>
+                                    <button onClick={() => setLoginRole('admin')} className="btn-secondary" style={{ padding: '1rem' }}>
+                                        Admin Engineer Login
+                                    </button>
                                 </div>
-                                <button type="submit" className="btn-primary" style={{ marginTop: '0.5rem' }}>Unlock Dashboard</button>
-                            </form>
+                            ) : (
+                                <form onSubmit={handleAdminLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {loginRole === 'admin' ? (
+                                        <div>
+                                            <label className="label">Admin Password</label>
+                                            <input
+                                                type="password"
+                                                className="input-field"
+                                                autoFocus
+                                                value={adminPasswordInput}
+                                                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                                                placeholder="••••••••"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <label className="label">Full Name *</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-field"
+                                                    autoFocus
+                                                    value={fieldEngineerName}
+                                                    onChange={(e) => setFieldEngineerName(e.target.value)}
+                                                    placeholder="John Doe"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="label">Phone / Email (Optional)</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-field"
+                                                    value={fieldEngineerContact}
+                                                    onChange={(e) => setFieldEngineerContact(e.target.value)}
+                                                    placeholder="+251 911..."
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                        <button type="button" onClick={() => setLoginRole('')} className="btn-secondary" style={{ flex: 1 }}>Back</button>
+                                        <button type="submit" className="btn-primary" style={{ flex: 2 }}>Unlock Dashboard</button>
+                                    </div>
+                                </form>
+                            )}
                         </div>
                     </div>
                 )}
@@ -614,6 +706,11 @@ function App() {
                     onClose={() => setIsAdminOpen(false)}
                     constants={constants}
                     onUpdate={setConstants}
+                    applianceCatalog={applianceCatalog}
+                    fetchApplianceCatalog={fetchApplianceCatalog}
+                    userRole={userRole}
+                    currentUser={currentUser}
+                    onPushToCalculator={handlePushToCalculator}
                 />
             </ErrorBoundary>
         </div>

@@ -13,11 +13,11 @@ const LOAD_CATEGORIES = {
             icon: Zap,
             description: 'Critical for daily living',
             items: [
-                { name: 'LED Bulbs (Pack)', watts: 50, hours: 6 },
-                { name: 'Refrigerator', watts: 150, hours: 24 },
-                { name: 'WiFi Router', watts: 15, hours: 24 },
-                { name: 'LCD TV', watts: 100, hours: 4 },
-                { name: 'Phone Chargers', watts: 20, hours: 4 }
+                { name: 'LED Bulbs (Pack)', watts: 50, hours: 6, dutyCycle: 1 },
+                { name: 'Refrigerator', watts: 150, hours: 24, dutyCycle: 0.3 },
+                { name: 'WiFi Router', watts: 15, hours: 24, dutyCycle: 1 },
+                { name: 'LCD TV', watts: 100, hours: 4, dutyCycle: 1 },
+                { name: 'Phone Chargers', watts: 20, hours: 4, dutyCycle: 1 }
             ]
         },
         {
@@ -26,14 +26,14 @@ const LOAD_CATEGORIES = {
             icon: Home,
             description: 'Lifestyle & Convenience',
             items: [
-                { name: 'Electric Water Heater', watts: 2000, hours: 2 },
-                { name: 'Electric Oven', watts: 3000, hours: 1 },
-                { name: 'Washing Machine', watts: 500, hours: 1 },
-                { name: 'Water Pump', watts: 750, hours: 0.5 },
-                { name: 'Microwave', watts: 1200, hours: 0.3 },
-                { name: 'Electric Kettle', watts: 2000, hours: 0.2 },
-                { name: 'Iron', watts: 1500, hours: 0.3 },
-                { name: 'Electric Cooker', watts: 3000, hours: 1 }
+                { name: 'Electric Water Heater', watts: 2000, hours: 2, dutyCycle: 1 },
+                { name: 'Electric Oven', watts: 3000, hours: 1, dutyCycle: 1 },
+                { name: 'Washing Machine', watts: 500, hours: 1, dutyCycle: 1 },
+                { name: 'Water Pump', watts: 750, hours: 0.5, dutyCycle: 1 },
+                { name: 'Microwave', watts: 1200, hours: 0.3, dutyCycle: 1 },
+                { name: 'Electric Kettle', watts: 2000, hours: 0.2, dutyCycle: 1 },
+                { name: 'Iron', watts: 1500, hours: 0.3, dutyCycle: 1 },
+                { name: 'Electric Cooker', watts: 3000, hours: 1, dutyCycle: 1 }
             ]
         }
     ],
@@ -44,14 +44,14 @@ const LOAD_CATEGORIES = {
             icon: Briefcase,
             description: 'Basic office & shop functionality',
             items: [
-                { name: 'Office Lighting', watts: 150, hours: 9 },
-                { name: 'Shop Lighting', watts: 400, hours: 10 },
-                { name: 'Desktop PC', watts: 250, hours: 9 },
-                { name: 'Laptop', watts: 65, hours: 8 },
-                { name: 'WiFi / Network', watts: 30, hours: 24 },
-                { name: 'Printer / Copier', watts: 400, hours: 1 },
-                { name: 'Sound System', watts: 100, hours: 10 },
-                { name: 'Blender', watts: 1000, hours: 1 }
+                { name: 'Office Lighting', watts: 150, hours: 9, dutyCycle: 1 },
+                { name: 'Shop Lighting', watts: 400, hours: 10, dutyCycle: 1 },
+                { name: 'Desktop PC', watts: 250, hours: 9, dutyCycle: 1 },
+                { name: 'Laptop', watts: 65, hours: 8, dutyCycle: 1 },
+                { name: 'WiFi / Network', watts: 30, hours: 24, dutyCycle: 1 },
+                { name: 'Printer / Copier', watts: 400, hours: 1, dutyCycle: 1 },
+                { name: 'Sound System', watts: 100, hours: 10, dutyCycle: 1 },
+                { name: 'Blender', watts: 1000, hours: 1, dutyCycle: 1 }
             ]
         },
         {
@@ -60,13 +60,13 @@ const LOAD_CATEGORIES = {
             icon: Server,
             description: 'High dependency infrastructure',
             items: [
-                { name: 'Server Rack (Small)', watts: 800, hours: 24 },
-                { name: 'Security Camera System', watts: 60, hours: 24 },
-                { name: 'POS Terminal', watts: 50, hours: 10 },
-                { name: 'Medical Fridge', watts: 200, hours: 24 },
-                { name: 'Commercial Fridge', watts: 400, hours: 24 },
-                { name: 'Espresso Machine', watts: 3000, hours: 4 },
-                { name: 'Coffee Grinder', watts: 400, hours: 2 }
+                { name: 'Server Rack (Small)', watts: 800, hours: 24, dutyCycle: 1 },
+                { name: 'Security Camera System', watts: 60, hours: 24, dutyCycle: 1 },
+                { name: 'POS Terminal', watts: 50, hours: 10, dutyCycle: 1 },
+                { name: 'Medical Fridge', watts: 200, hours: 24, dutyCycle: 0.3 },
+                { name: 'Commercial Fridge', watts: 400, hours: 24, dutyCycle: 0.3 },
+                { name: 'Espresso Machine', watts: 3000, hours: 4, dutyCycle: 1 },
+                { name: 'Coffee Grinder', watts: 400, hours: 2, dutyCycle: 1 }
             ]
         }
     ]
@@ -74,14 +74,14 @@ const LOAD_CATEGORIES = {
 
 const PRESETS = {
     residential: [
-        { label: 'Small Apartment', loads: [{ name: 'LED Bulbs (Pack)', watts: 40, quantity: 1, hours: 5 }, { name: 'WiFi Router', watts: 10, quantity: 1, hours: 24 }, { name: 'Refrigerator', watts: 150, quantity: 1, hours: 24 }, { name: 'LCD TV', watts: 100, quantity: 1, hours: 4 }] },
-        { label: '3-Bedroom Villa', loads: [{ name: 'LED Bulbs (Pack)', watts: 100, quantity: 1, hours: 6 }, { name: 'WiFi Router', watts: 15, quantity: 1, hours: 24 }, { name: 'Refrigerator', watts: 200, quantity: 1, hours: 24 }, { name: 'LCD TV', watts: 150, quantity: 2, hours: 4 }, { name: 'Water Pump', watts: 750, quantity: 1, hours: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5 }] },
-        { label: 'Big Villa (+5 Bedroom)', loads: [{ name: 'LED Bulbs (Pack)', watts: 200, quantity: 1, hours: 8 }, { name: 'WiFi Router', watts: 20, quantity: 2, hours: 24 }, { name: 'Refrigerator (Large)', watts: 250, quantity: 2, hours: 24 }, { name: 'LCD TV', watts: 150, quantity: 3, hours: 5 }, { name: 'Water Pump', watts: 1500, quantity: 1, hours: 1 }, { name: 'Electric Water Heater', watts: 2000, quantity: 2, hours: 2 }, { name: 'Electric Oven', watts: 3000, quantity: 1, hours: 1 }, { name: 'Washing Machine', watts: 800, quantity: 1, hours: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5 }] }
+        { label: 'Small Apartment', loads: [{ name: 'LED Bulbs (Pack)', watts: 40, quantity: 1, hours: 5, dutyCycle: 1 }, { name: 'WiFi Router', watts: 10, quantity: 1, hours: 24, dutyCycle: 1 }, { name: 'Refrigerator', watts: 150, quantity: 1, hours: 24, dutyCycle: 0.3 }, { name: 'LCD TV', watts: 100, quantity: 1, hours: 4, dutyCycle: 1 }] },
+        { label: '3-Bedroom Villa', loads: [{ name: 'LED Bulbs (Pack)', watts: 100, quantity: 1, hours: 6, dutyCycle: 1 }, { name: 'WiFi Router', watts: 15, quantity: 1, hours: 24, dutyCycle: 1 }, { name: 'Refrigerator', watts: 200, quantity: 1, hours: 24, dutyCycle: 0.3 }, { name: 'LCD TV', watts: 150, quantity: 2, hours: 4, dutyCycle: 1 }, { name: 'Water Pump', watts: 750, quantity: 1, hours: 1, dutyCycle: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5, dutyCycle: 1 }] },
+        { label: 'Big Villa (+5 Bedroom)', loads: [{ name: 'LED Bulbs (Pack)', watts: 200, quantity: 1, hours: 8, dutyCycle: 1 }, { name: 'WiFi Router', watts: 20, quantity: 2, hours: 24, dutyCycle: 1 }, { name: 'Refrigerator (Large)', watts: 250, quantity: 2, hours: 24, dutyCycle: 0.3 }, { name: 'LCD TV', watts: 150, quantity: 3, hours: 5, dutyCycle: 1 }, { name: 'Water Pump', watts: 1500, quantity: 1, hours: 1, dutyCycle: 1 }, { name: 'Electric Water Heater', watts: 2000, quantity: 2, hours: 2, dutyCycle: 1 }, { name: 'Electric Oven', watts: 3000, quantity: 1, hours: 1, dutyCycle: 1 }, { name: 'Washing Machine', watts: 800, quantity: 1, hours: 1, dutyCycle: 1 }, { name: 'Electric Kettle', watts: 2000, quantity: 1, hours: 0.5, dutyCycle: 1 }] }
     ],
     sme: [
-        { label: 'Small Office', loads: [{ name: 'Office Lighting', watts: 200, quantity: 1, hours: 9 }, { name: 'WiFi / Network', watts: 30, quantity: 1, hours: 24 }, { name: 'Laptop', watts: 65, quantity: 4, hours: 8 }, { name: 'Printer / Copier', watts: 300, quantity: 1, hours: 1 }] },
-        { label: 'Retail Shop', loads: [{ name: 'Office Lighting', watts: 300, quantity: 1, hours: 10 }, { name: 'POS Terminal', watts: 50, quantity: 1, hours: 10 }, { name: 'Security Camera System', watts: 40, quantity: 1, hours: 24 }] },
-        { label: 'Coffee Shop / Restaurant', loads: [{ name: 'Espresso Machine', watts: 3000, quantity: 1, hours: 4 }, { name: 'Coffee Grinder', watts: 400, quantity: 2, hours: 2 }, { name: 'Commercial Fridge', watts: 400, quantity: 2, hours: 24 }, { name: 'Shop Lighting', watts: 400, quantity: 1, hours: 10 }, { name: 'POS Terminal', watts: 50, quantity: 2, hours: 10 }, { name: 'Blender', watts: 1000, quantity: 1, hours: 1 }, { name: 'Sound System', watts: 100, quantity: 1, hours: 10 }] }
+        { label: 'Small Office', loads: [{ name: 'Office Lighting', watts: 200, quantity: 1, hours: 9, dutyCycle: 1 }, { name: 'WiFi / Network', watts: 30, quantity: 1, hours: 24, dutyCycle: 1 }, { name: 'Laptop', watts: 65, quantity: 4, hours: 8, dutyCycle: 1 }, { name: 'Printer / Copier', watts: 300, quantity: 1, hours: 1, dutyCycle: 1 }] },
+        { label: 'Retail Shop', loads: [{ name: 'Office Lighting', watts: 300, quantity: 1, hours: 10, dutyCycle: 1 }, { name: 'POS Terminal', watts: 50, quantity: 1, hours: 10, dutyCycle: 1 }, { name: 'Security Camera System', watts: 40, quantity: 1, hours: 24, dutyCycle: 1 }] },
+        { label: 'Coffee Shop / Restaurant', loads: [{ name: 'Espresso Machine', watts: 3000, quantity: 1, hours: 4, dutyCycle: 1 }, { name: 'Coffee Grinder', watts: 400, quantity: 2, hours: 2, dutyCycle: 1 }, { name: 'Commercial Fridge', watts: 400, quantity: 2, hours: 24, dutyCycle: 0.3 }, { name: 'Shop Lighting', watts: 400, quantity: 1, hours: 10, dutyCycle: 1 }, { name: 'POS Terminal', watts: 50, quantity: 2, hours: 10, dutyCycle: 1 }, { name: 'Blender', watts: 1000, quantity: 1, hours: 1, dutyCycle: 1 }, { name: 'Sound System', watts: 100, quantity: 1, hours: 10, dutyCycle: 1 }] }
     ]
 };
 
@@ -91,15 +91,41 @@ const STEPS = [
     { id: 3, label: 'Review' }
 ];
 
-const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, setOutageHours, phase, setPhase, onCalculate, onBack }) => {
+const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, setOutageHours, phase, setPhase, applianceCatalog, isLoadingCatalog, onCalculate, onBack }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [activeCategory, setActiveCategory] = useState(null);
     const [editingLoad, setEditingLoad] = useState(null); // Load being configured { name, watts, qty ... }
 
+    const dynamicCategories = React.useMemo(() => {
+        if (!applianceCatalog || applianceCatalog.length === 0) return LOAD_CATEGORIES[userType];
+
+        const base = LOAD_CATEGORIES[userType].map(cat => ({ ...cat, items: [] }));
+        
+        let customCategories = [];
+        applianceCatalog.filter(a => a.user_type === userType).forEach(app => {
+            let cat = base.find(c => c.id === app.category_id);
+            if (!cat) {
+               cat = customCategories.find(c => c.id === app.category_id);
+               if (!cat) {
+                   cat = { id: app.category_id, label: app.category_label, icon: Zap, description: app.category_desc, items: [] };
+                   customCategories.push(cat);
+               }
+            }
+            cat.items.push({
+                name: app.name,
+                watts: Number(app.watts),
+                hours: Number(app.hours),
+                dutyCycle: Number(app.duty_cycle || 1)
+            });
+        });
+        
+        return [...base, ...customCategories].filter(c => c.items.length > 0);
+    }, [userType, applianceCatalog]);
+
     // Initialize with a preset if empty? No, let user choose.
 
     const totalWatts = appliances.reduce((sum, app) => sum + (app.watts * app.quantity), 0);
-    const dailyKwh = appliances.reduce((sum, app) => sum + (app.watts * app.quantity * app.hours), 0) / 1000;
+    const dailyKwh = appliances.reduce((sum, app) => sum + (app.watts * app.quantity * app.hours * (app.dutyCycle ?? 1.0)), 0) / 1000;
 
     const handleAddLoad = (item) => {
         setEditingLoad({ ...item, quantity: 1, id: Date.now() });
@@ -126,7 +152,7 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
     const isSelected = (name) => appliances.some(a => a.name === name);
 
     const handleAddCustomLoad = () => {
-        setEditingLoad({ name: '', watts: 100, quantity: 1, hours: 2, id: Date.now(), isCustom: true });
+        setEditingLoad({ name: '', watts: 100, quantity: 1, hours: 2, dutyCycle: 1, id: Date.now(), isCustom: true });
     };
 
     return (
@@ -194,7 +220,7 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                                {LOAD_CATEGORIES[userType].map(cat => (
+                                {dynamicCategories.map(cat => (
                                     <div key={cat.id} style={{
                                         borderRadius: '1rem', border: '1px solid var(--color-border-glass)', background: 'rgba(255,255,255,0.02)', padding: '1.5rem',
                                         transition: 'all 0.3s'
@@ -489,6 +515,28 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-emerald)', marginTop: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '4px' }}>
                                     <Info size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                                     Tip: Be conservative. Over-estimating runtime significantly increases battery cost.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: '2rem' }}>
+                            <label className="label">Duty Cycle / Activity Level</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'white', fontWeight: 600, marginBottom: '0.5rem' }}>
+                                    <span>{Math.round((editingLoad.dutyCycle ?? 1) * 100)}% Active</span>
+                                </div>
+                                <input
+                                    type="range" min="0.1" max="1" step="0.05"
+                                    value={editingLoad.dutyCycle ?? 1}
+                                    onChange={(e) => handleUpdateLoad(Number(e.target.value), 'dutyCycle')}
+                                    style={{ width: '100%', height: '6px', accentColor: 'var(--color-primary)' }}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                    <span>10%</span>
+                                    <span>100% (Continuous)</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>
+                                    Tip: Fridges only run cooling compressors 30% of the time.
                                 </div>
                             </div>
                         </div>

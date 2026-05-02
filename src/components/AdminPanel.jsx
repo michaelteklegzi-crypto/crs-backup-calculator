@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { X, Info, Database, Settings, ChevronDown, ChevronRight, User, Phone, MapPin, Calendar, DollarSign, FileText, RefreshCw, Save, Truck, Activity } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { runCostEngine } from '../utils/costEngine';
+import PremiumResults from './PremiumResults';
+import PDFReportTemplate from './PDFReportTemplate';
+import { generatePDFReport } from '../utils/pdfExport';
+import FieldAuditModule from './FieldAuditModule';
 
 const DESCRIPTIONS = {
     SYSTEM_EFFICIENCY: "Overall system efficiency factor (0-1). Accounts for wire loss, etc.",
@@ -32,13 +36,20 @@ const DESCRIPTIONS = {
     INFLATION_RATE: "Fuel inflation rate (decimal)."
 };
 
-const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
-    const [activeTab, setActiveTab] = useState('leads'); // 'params' | 'leads' | 'banks' | 'costs'
+const AdminPanel = ({ constants, onUpdate, isOpen, onClose, applianceCatalog, fetchApplianceCatalog, userRole, currentUser, onPushToCalculator }) => {
+    const [activeTab, setActiveTab] = useState(userRole === 'field' ? 'field_audits' : 'leads'); // 'params' | 'leads' | 'banks' | 'costs' | 'appliances' | 'field_audits'
     const [localConstants, setLocalConstants] = useState(constants);
     const [leads, setLeads] = useState([]);
     const [banks, setBanks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [expandedLead, setExpandedLead] = useState(null);
+
+    // Update default tab if role changes
+    useEffect(() => {
+        if (isOpen) {
+            setActiveTab(userRole === 'field' ? 'field_audits' : 'leads');
+        }
+    }, [userRole, isOpen]);
 
     // Cost Module State
     const [costSettings, setCostSettings] = useState([]);
@@ -47,6 +58,84 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
 
     // Bank Form State
     const [newBank, setNewBank] = useState({ name: '', interest_rate: '' });
+    
+    // Appliance Form State
+    const [newAppliance, setNewAppliance] = useState({ name: '', watts: '', hours: '', duty_cycle: 1, user_type: 'residential', category_id: 'essential', category_label: 'Essential Loads' });
+    const [editingAppliance, setEditingAppliance] = useState(null);
+    const [editValues, setEditValues] = useState({ watts: '', duty_cycle: '' });
+
+    // PDF Email Workflow State
+    const [renderingReportForLead, setRenderingReportForLead] = useState(null);
+    const [previewReportLead, setPreviewReportLead] = useState(null);
+
+    const handleSendReport = async (lead) => {
+        const proposal = lead.proposals?.[0];
+        console.log('[PDF] Lead:', lead);
+        console.log('[PDF] Proposal:', proposal);
+        console.log('[PDF] analysis_json:', proposal?.analysis_json);
+        
+        if (!proposal) {
+            return alert("No proposal found for this lead.");
+        }
+        if (!proposal.analysis_json) {
+            return alert("Proposal exists but has no analysis_json stored. The lead was submitted before the new save-to-DB code was active. Please submit a NEW test lead and try again.");
+        }
+
+        const json = proposal.analysis_json;
+        console.log('[PDF] systemSize:', json?.systemSize);
+        console.log('[PDF] financials:', json?.financials);
+
+        if (!json.systemSize || !json.financials) {
+            return alert("analysis_json is missing systemSize or financials. Check console for details.");
+        }
+
+        setRenderingReportForLead(lead);
+
+        // Wait for React to mount the hidden PDFReportTemplate
+        setTimeout(async () => {
+            const targetId = 'admin-pdf-capture-' + lead.id;
+            console.log('[PDF] Looking for element:', targetId, document.getElementById(targetId));
+            try {
+                // Step 1: Generate and download the PDF
+                await generatePDFReport(targetId, `CRS_Report_${lead.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+
+                // Step 2: Wait a moment to let the download start before navigating
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Step 3: Fire mail client (open in same tab using location, or new tab)
+                const subject = encodeURIComponent("Your Engineered Solar Architecture Report");
+                const body = encodeURIComponent(
+`Hi ${lead.name.split(' ')[0]},
+
+Thank you for requesting a power architecture report from Complete Renewable Solutions (CRS).
+
+After analyzing your electrical parameters, we have engineered a custom solution designed to secure your energy independence and reduce reliance on grid and diesel power.
+Please find your personalized Technical Proposal attached to this email as a PDF.
+
+Let us know when you would like to schedule a consultation to discuss installation timelines and financing pathways!
+
+Best regards,
+
+Complete Renewable Solutions (CRS)
+info@crs-ethiopia.com
++251 911 234 567
+`
+                );
+
+                window.open(`mailto:${lead.email}?subject=${subject}&body=${body}`, '_self');
+
+                // Step 4: Update lead status
+                await supabase.from('leads').update({ status: 'emailed' }).eq('id', lead.id);
+                fetchLeads();
+
+            } catch (err) {
+                console.error("Error generating report:", err);
+                alert("Failed to generate report: " + err.message);
+            } finally {
+                setRenderingReportForLead(null);
+            }
+        }, 1500);
+    };
 
     useEffect(() => {
         if (isOpen) {
@@ -206,6 +295,57 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
         }
     };
 
+    const handleAddAppliance = async (e) => {
+        e.preventDefault();
+        try {
+            const { error } = await supabase.from('appliances_catalog').insert([{
+                ...newAppliance,
+                watts: parseFloat(newAppliance.watts),
+                hours: parseFloat(newAppliance.hours),
+                duty_cycle: parseFloat(newAppliance.duty_cycle)
+            }]);
+            if (error) throw error;
+            if(fetchApplianceCatalog) fetchApplianceCatalog();
+            setNewAppliance({ ...newAppliance, name: '', watts: '', hours: '' });
+        } catch (err) {
+            console.error("Error adding appliance:", err);
+            alert("Failed to add appliance.");
+        }
+    };
+
+    const deleteAppliance = async (id) => {
+        if (!confirm("Are you sure you want to delete this appliance?")) return;
+        try {
+            const { error } = await supabase.from('appliances_catalog').delete().eq('id', id);
+            if (error) throw error;
+            if(fetchApplianceCatalog) fetchApplianceCatalog();
+        } catch (err) {
+            console.error("Error deleting appliance:", err);
+        }
+    };
+
+    const startEditAppliance = (app) => {
+        setEditingAppliance(app.id);
+        setEditValues({ watts: app.watts, duty_cycle: app.duty_cycle });
+    };
+
+    const saveEditAppliance = async (id) => {
+        try {
+            const { error } = await supabase.from('appliances_catalog')
+                .update({
+                    watts: parseFloat(editValues.watts),
+                    duty_cycle: parseFloat(editValues.duty_cycle)
+                })
+                .eq('id', id);
+            if(error) throw error;
+            setEditingAppliance(null);
+            if(fetchApplianceCatalog) fetchApplianceCatalog();
+        } catch(err) {
+            console.error("Error updating appliance", err);
+            alert("Failed to update appliance.");
+        }
+    };
+
     const handleChange = (key, value) => {
         setLocalConstants(prev => ({
             ...prev,
@@ -255,60 +395,98 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                 {/* Tabs */}
                 <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                     <button
-                        onClick={() => setActiveTab('leads')}
+                        onClick={() => setActiveTab('field_audits')}
                         style={{
-                            flex: 1,
                             padding: '1rem 1.5rem', background: 'transparent',
-                            borderBottom: activeTab === 'leads' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                            color: activeTab === 'leads' ? 'white' : '#94a3b8',
-                            fontWeight: activeTab === 'leads' ? 600 : 400,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Leads & Requests
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('costs')}
-                        style={{
-                            flex: 1,
-                            padding: '1rem 1.5rem', background: 'transparent',
-                            borderBottom: activeTab === 'costs' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                            color: activeTab === 'costs' ? 'white' : '#94a3b8',
-                            fontWeight: activeTab === 'costs' ? 600 : 400,
+                            borderBottom: activeTab === 'field_audits' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                            color: activeTab === 'field_audits' ? 'white' : '#94a3b8',
+                            fontWeight: activeTab === 'field_audits' ? 600 : 400,
                             cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
                         }}
                     >
-                        <DollarSign size={16} /> Cost Engine
+                        <FileText size={16} /> Field Audits
                     </button>
-                    <button
-                        onClick={() => setActiveTab('banks')}
-                        style={{
-                            padding: '1rem 1.5rem', background: 'transparent',
-                            borderBottom: activeTab === 'banks' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                            color: activeTab === 'banks' ? 'white' : '#94a3b8',
-                            fontWeight: activeTab === 'banks' ? 600 : 400,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Banks & Rates
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('params')}
-                        style={{
-                            padding: '1rem 1.5rem', background: 'transparent',
-                            borderBottom: activeTab === 'params' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                            color: activeTab === 'params' ? 'white' : '#94a3b8',
-                            fontWeight: activeTab === 'params' ? 600 : 400,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        System Parameters
-                    </button>
+                    {userRole === 'admin' && (
+                        <>
+                            <button
+                                onClick={() => setActiveTab('leads')}
+                                style={{
+                                    flex: 1,
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'leads' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'leads' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'leads' ? 600 : 400,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Leads & Requests
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('costs')}
+                                style={{
+                                    flex: 1,
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'costs' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'costs' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'costs' ? 600 : 400,
+                                    cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                                }}
+                            >
+                                <DollarSign size={16} /> Cost Engine
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('banks')}
+                                style={{
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'banks' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'banks' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'banks' ? 600 : 400,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Banks & Rates
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('appliances')}
+                                style={{
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'appliances' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'appliances' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'appliances' ? 600 : 400,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Appliance Catalog
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('params')}
+                                style={{
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'params' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'params' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'params' ? 600 : 400,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                System Parameters
+                            </button>
+                        </>
+                    )}
                 </div>
 
                 {/* Content */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                
+                    {/* FIELD AUDITS TAB */}
+                    {activeTab === 'field_audits' && (
+                        <FieldAuditModule 
+                            role={userRole} 
+                            currentUser={currentUser} 
+                            onPushToCalculator={onPushToCalculator} 
+                        />
+                    )}
 
                     {/* LEADS TAB */}
                     {activeTab === 'leads' && (
@@ -338,6 +516,7 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
 
                                                 {/* Indicators */}
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    {lead.status === 'emailed' && <span title="Report Emailed" style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>EMAILED</span>}
                                                     {lead.proposals?.length > 0 && <span title="Proposal Generated" style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', fontSize: '0.75rem' }}>P</span>}
                                                     {lead.site_visits?.length > 0 && <span title="Site Visit Requested" style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', fontSize: '0.75rem' }}>SV</span>}
                                                     {lead.loan_applications?.length > 0 && <span title="Loan Applied" style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(234, 179, 8, 0.2)', color: '#facc15', fontSize: '0.75rem' }}>$</span>}
@@ -387,6 +566,27 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                                                             ) : <div style={{ fontSize: '0.9rem', color: '#64748b' }}>None</div>}
                                                         </div>
                                                     </div>
+
+                                                    {/* Actions Panel */}
+                                                    {lead.proposals?.length > 0 && (
+                                                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '1rem' }}>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setPreviewReportLead(lead); }}
+                                                                className="btn-primary"
+                                                                style={{ padding: '0.75rem 1.5rem', background: 'transparent', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}
+                                                            >
+                                                                Preview Report Dashboard
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleSendReport(lead); }}
+                                                                className="btn-primary"
+                                                                disabled={renderingReportForLead?.id === lead.id || lead.status === 'emailed'}
+                                                                style={{ padding: '0.75rem 1.5rem', background: lead.status === 'emailed' ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-primary)', color: lead.status === 'emailed' ? '#10b981' : 'white', border: lead.status === 'emailed' ? '1px solid #10b981' : 'none' }}
+                                                            >
+                                                                {renderingReportForLead?.id === lead.id ? 'Generating Engine PDF...' : lead.status === 'emailed' ? 'Report Emailed ✓' : 'Review & Send Report'}
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -630,6 +830,106 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
                         </div>
                     )}
 
+                    {/* APPLIANCES CATALOG TAB */}
+                    {activeTab === 'appliances' && (
+                        <div className="animate-fade-in">
+                            <div className="card" style={{ marginBottom: '2rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '1rem' }}>Add New Appliance</h3>
+                                <form onSubmit={handleAddAppliance} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', alignItems: 'end' }}>
+                                    <div>
+                                        <label className="label">Name</label>
+                                        <input type="text" className="input-field" value={newAppliance.name} onChange={e => setNewAppliance({...newAppliance, name: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                        <label className="label">Watts</label>
+                                        <input type="number" className="input-field" value={newAppliance.watts} onChange={e => setNewAppliance({...newAppliance, watts: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                        <label className="label">Hours</label>
+                                        <input type="number" step="0.1" className="input-field" value={newAppliance.hours} onChange={e => setNewAppliance({...newAppliance, hours: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                        <label className="label">Duty Cycle (1.0 = 100%)</label>
+                                        <input type="number" step="0.1" min="0.1" max="1" className="input-field" value={newAppliance.duty_cycle} onChange={e => setNewAppliance({...newAppliance, duty_cycle: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                        <label className="label">User Type</label>
+                                        <select className="input-field" value={newAppliance.user_type} onChange={e => setNewAppliance({...newAppliance, user_type: e.target.value})}>
+                                            <option value="residential">Residential</option>
+                                            <option value="sme">SME</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="label">Category ID</label>
+                                        <input type="text" className="input-field" value={newAppliance.category_id} onChange={e => setNewAppliance({...newAppliance, category_id: e.target.value})} required />
+                                    </div>
+                                    <div>
+                                        <label className="label">Category Label</label>
+                                        <input type="text" className="input-field" value={newAppliance.category_label} onChange={e => setNewAppliance({...newAppliance, category_label: e.target.value})} required />
+                                    </div>
+                                    <button type="submit" className="btn-primary" style={{ padding: '0.8rem 1.5rem' }}>Add Appliance</button>
+                                </form>
+                            </div>
+
+                            <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '1rem' }}>Active Catalog</h3>
+                            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                        <tr>
+                                            <th style={{ padding: '1rem', textAlign: 'left', color: '#cbd5e1' }}>User Type</th>
+                                            <th style={{ padding: '1rem', textAlign: 'left', color: '#cbd5e1' }}>Category</th>
+                                            <th style={{ padding: '1rem', textAlign: 'left', color: '#cbd5e1' }}>Name</th>
+                                            <th style={{ padding: '1rem', textAlign: 'left', color: '#cbd5e1' }}>Watts</th>
+                                            <th style={{ padding: '1rem', textAlign: 'left', color: '#cbd5e1' }}>Duty Cycle</th>
+                                            <th style={{ padding: '1rem', textAlign: 'right', color: '#cbd5e1' }}>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(applianceCatalog || []).map(app => (
+                                            <tr key={app.id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '1rem', color: '#94a3b8' }}>{app.user_type}</td>
+                                                <td style={{ padding: '1rem', color: '#94a3b8' }}>{app.category_label}</td>
+                                                <td style={{ padding: '1rem', color: 'white' }}>{app.name}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--color-accent)' }}>
+                                                    {editingAppliance === app.id ? (
+                                                        <input type="number" className="input-field" style={{ width: '80px', padding: '0.4rem' }} value={editValues.watts} onChange={e => setEditValues({...editValues, watts: e.target.value})} />
+                                                    ) : (
+                                                        `${app.watts}W`
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem', color: 'white' }}>
+                                                    {editingAppliance === app.id ? (
+                                                        <input type="number" step="0.1" min="0.1" max="1" className="input-field" style={{ width: '80px', padding: '0.4rem' }} value={editValues.duty_cycle} onChange={e => setEditValues({...editValues, duty_cycle: e.target.value})} />
+                                                    ) : (
+                                                        `${Math.round(app.duty_cycle * 100)}%`
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                    {editingAppliance === app.id ? (
+                                                        <>
+                                                            <button onClick={() => saveEditAppliance(app.id)} style={{ background: 'transparent', border: 'none', color: '#22c55e', cursor: 'pointer', marginRight: '0.75rem' }}>Save</button>
+                                                            <button onClick={() => setEditingAppliance(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>Cancel</button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => startEditAppliance(app)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '0.75rem' }}>Edit</button>
+                                                            <button onClick={() => deleteAppliance(app.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Delete</button>
+                                                        </>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {(!applianceCatalog || applianceCatalog.length === 0) && (
+                                            <tr>
+                                                <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>No appliances found. Add one above.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
                     {/* PARAMS TAB */}
                     {activeTab === 'params' && (
                         <div>
@@ -667,6 +967,56 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose }) => {
 
                 </div>
             </div>
+
+            {/* Preview Report Modal */}
+            {previewReportLead && previewReportLead.proposals?.[0]?.analysis_json && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10000, overflowY: 'auto' }}>
+                    <div style={{ position: 'sticky', top: 0, padding: '1rem', background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid var(--color-border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10001 }}>
+                        <div style={{ color: 'white', fontWeight: 600 }}>Preview: {previewReportLead.name}'s Report</div>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button onClick={() => { handleSendReport(previewReportLead); setPreviewReportLead(null); }} className="btn-primary">Send This Report</button>
+                            <button onClick={() => setPreviewReportLead(null)} className="btn-icon-only"><X size={24} color="white" /></button>
+                        </div>
+                    </div>
+                    <div style={{ padding: '2rem 0' }}>
+                        <PremiumResults
+                            systemSize={previewReportLead.proposals[0].analysis_json.systemSize}
+                            financials={previewReportLead.proposals[0].analysis_json.financials}
+                            comparisonData={previewReportLead.proposals[0].analysis_json.comparisonData}
+                            hourlyData={previewReportLead.proposals[0].analysis_json.hourlyData}
+                            hourlyNote={previewReportLead.proposals[0].analysis_json.hourlyNote}
+                            onOpenAdvisory={() => {}}
+                            onFinance={() => {}}
+                            userType={previewReportLead.source}
+                            outageHours={previewReportLead.proposals[0].analysis_json.config?.outageHours || 4}
+                            constants={constants}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Hidden Engine Node for PDF Generation — uses visibility:hidden so html2canvas can find it */}
+            {renderingReportForLead && renderingReportForLead.proposals?.[0]?.analysis_json && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                    overflow: 'hidden'
+                }}>
+                    <PDFReportTemplate
+                        reportId={`admin-pdf-capture-${renderingReportForLead.id}`}
+                        systemSize={renderingReportForLead.proposals[0].analysis_json.systemSize}
+                        financials={renderingReportForLead.proposals[0].analysis_json.financials}
+                        hourlyData={renderingReportForLead.proposals[0].analysis_json.hourlyData}
+                        clientName={renderingReportForLead.name}
+                        userType={renderingReportForLead.source}
+                        outageHours={renderingReportForLead.proposals[0].analysis_json.config?.outageHours || 4}
+                    />
+                </div>
+            )}
         </div>
     );
 };

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { calculateSystemSize, calculateFinancials, DEFAULT_CONSTANTS } from '../utils/logic'; // Import logic functions
 
-const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, hourlyNote, onGetProposal, onFinance, onOpenAdvisory, userType, outageHours, constants = DEFAULT_CONSTANTS }) => {
+const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, hourlyNote, onGetProposal, onFinance, onOpenAdvisory, userType, outageHours, constants = DEFAULT_CONSTANTS, reportId = 'premium-results-report' }) => {
     const [activeSection, setActiveSection] = useState('overview'); // 'overview' | 'financial' | 'reliability'
     const [showBreakdown, setShowBreakdown] = useState(false);
     const [technicalView, setTechnicalView] = useState(false);
@@ -70,7 +70,7 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, ho
     };
 
     return (
-        <div className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto', color: 'white', paddingBottom: '4rem' }}>
+        <div id={reportId} className="animate-fade-in" style={{ maxWidth: '1200px', margin: '0 auto', color: 'white', padding: '2rem', paddingBottom: '4rem' }}>
 
             {/* FUTURE SCENARIO MODAL */}
             {showFutureModal && futureData && (

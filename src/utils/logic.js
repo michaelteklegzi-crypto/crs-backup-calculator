@@ -48,7 +48,8 @@ export function calculateSystemSize(loadProfile, outageHours, phase = 'unknown',
     let rawPeakPowerW = 0;
 
     loadProfile.forEach(item => {
-        const dailyWh = item.watts * item.hours * item.quantity;
+        const dutyCycle = item.dutyCycle !== undefined ? item.dutyCycle : 1.0;
+        const dailyWh = item.watts * item.hours * item.quantity * dutyCycle;
         totalDailyEnergyWh += dailyWh;
         rawPeakPowerW += item.watts * item.quantity; // Sum of max potential
     });
