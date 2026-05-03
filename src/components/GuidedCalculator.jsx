@@ -94,6 +94,14 @@ const STEPS = [
 const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, setOutageHours, phase, setPhase, applianceCatalog, isLoadingCatalog, onCalculate, onBack }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [activeCategory, setActiveCategory] = useState(null);
+
+    // Sync all appliances with outageHours so they match the system duration
+    useEffect(() => {
+        const needsSync = appliances.some(a => a.hours !== outageHours);
+        if (needsSync) {
+            setAppliances(appliances.map(a => ({ ...a, hours: outageHours })));
+        }
+    }, [outageHours, appliances, setAppliances]);
     const [editingLoad, setEditingLoad] = useState(null); // Load being configured { name, watts, qty ... }
 
     const dynamicCategories = React.useMemo(() => {
@@ -152,7 +160,7 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
     const isSelected = (name) => appliances.some(a => a.name === name);
 
     const handleAddCustomLoad = () => {
-        setEditingLoad({ name: '', watts: 100, quantity: 1, hours: 2, dutyCycle: 1, id: Date.now(), isCustom: true });
+        setEditingLoad({ name: '', watts: 100, quantity: 1, hours: outageHours, dutyCycle: 1, id: Date.now(), isCustom: true });
     };
 
     return (
@@ -368,7 +376,6 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
                                                 <div style={{ color: 'white' }}>{app.name}</div>
                                                 <div style={{ color: 'var(--color-text-muted)' }}>{app.watts}W</div>
                                                 <div style={{ color: 'var(--color-text-muted)' }}>x {app.quantity}</div>
-                                                <div style={{ color: 'var(--color-text-muted)' }}>{app.hours}h</div>
                                                 <button onClick={() => removeLoad(app.id)} style={{ color: '#ef4444', background: 'none', cursor: 'pointer', padding: 0 }}><Trash2 size={16} /></button>
                                             </div>
                                         ))
@@ -497,24 +504,12 @@ const GuidedCalculator = ({ userType, appliances, setAppliances, outageHours, se
 
                         <div className="form-group" style={{ marginBottom: '2rem' }}>
                             <label className="label">Daily Runtime Duration</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', opacity: 0.5 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'white', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                    <span>{editingLoad.hours} Hours / Day</span>
+                                    <span>{outageHours} Hours / Day (System Linked)</span>
                                 </div>
-                                <input
-                                    type="range" min="0.5" max="24" step="0.5"
-                                    value={editingLoad.hours}
-                                    onChange={(e) => handleUpdateLoad(Number(e.target.value), 'hours')}
-                                    style={{ width: '100%', height: '6px', accentColor: 'var(--color-accent-electric-blue)' }}
-                                />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                                    <span>30m</span>
-                                    <span>12h</span>
-                                    <span>24h (Always On)</span>
-                                </div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-emerald)', marginTop: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '4px' }}>
-                                    <Info size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                                    Tip: Be conservative. Over-estimating runtime significantly increases battery cost.
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                    Appliance hours are automatically synced with your Backup Duration settings in the next step.
                                 </div>
                             </div>
                         </div>
