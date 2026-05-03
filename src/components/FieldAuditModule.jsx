@@ -495,7 +495,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
         return (
             <div className="animate-fade-in">
                 {/* Hidden Template for PDF Export */}
-                <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, visibility: 'hidden', pointerEvents: 'none', zIndex: -1, overflow: 'hidden' }}>
                     <FieldAuditReportTemplate reportId="field-audit-report-new" siteData={formData} />
                 </div>
                 

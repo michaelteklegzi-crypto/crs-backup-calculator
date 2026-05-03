@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { Plus, Trash2, Zap, Info } from 'lucide-react';
 
 const TYPICAL_RANGES = {
@@ -44,10 +44,18 @@ const COMMON_APPLIANCES = [
 
 const Calculator = ({ appliances, setAppliances, outageHours, setOutageHours, onCalculate }) => {
 
+    // Sync all manual appliances with outageHours so they match the slider
+    useEffect(() => {
+        const needsSync = appliances.some(a => a.hours !== outageHours);
+        if (needsSync) {
+            setAppliances(appliances.map(a => ({ ...a, hours: outageHours })));
+        }
+    }, [outageHours, appliances, setAppliances]);
+
     const addAppliance = () => {
         setAppliances([
             ...appliances,
-            { id: Date.now(), name: 'New Appliance', watts: 100, quantity: 1, hours: 2 }
+            { id: Date.now(), name: 'New Appliance', watts: 100, quantity: 1, hours: outageHours }
         ]);
     };
 
@@ -61,7 +69,7 @@ const Calculator = ({ appliances, setAppliances, outageHours, setOutageHours, on
         ));
     };
 
-    const totalLoad = appliances.reduce((sum, app) => sum + (app.watts * app.quantity * app.hours), 0);
+    const totalLoad = appliances.reduce((sum, app) => sum + (app.watts * app.quantity * outageHours), 0);
 
     return (
         <div className="card" style={{ height: '100%' }}>
