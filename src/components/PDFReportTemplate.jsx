@@ -43,10 +43,10 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
             {/* BRAND HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${colors.primary}`, paddingBottom: '20px', marginBottom: '30px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <img src="/images/crs_logo.png" alt="CRS Logo" style={{ height: '50px' }} crossOrigin="anonymous" />
+                    <img src="/images/crs_logo.png" alt="CRS Logo" style={{ height: '50px' }} />
                     <div>
                         <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 800, color: colors.primary, letterSpacing: '-0.5px' }}>
-                            CLIMATE RESILIENT SOLUTION (CRS)
+                            CLIMATE RESILIENCE SOLUTIONS (CRS)
                         </h1>
                         <div style={{ fontSize: '14px', color: colors.mutedText, marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                             Power Architecture & Investment Report
@@ -191,7 +191,7 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
 
             {/* FOOTER */}
             <div style={{ marginTop: '50px', paddingTop: '20px', borderTop: `2px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: colors.mutedText }}>
-                <div>info@crs-ethiopia.com • +251 911 234 567</div>
+                <div>info@crs-worldwide.com • https://crs-worldwide.com</div>
                 <div>Proprietary Engineering Snapshot • Generated automatically.</div>
             </div>
 

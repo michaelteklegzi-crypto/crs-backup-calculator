@@ -618,7 +618,7 @@ function App() {
                                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
                                         <h4>Contact Us</h4>
                                         <p>Phone: +251 911 234 567</p>
-                                        <p>Email: info@crs-ethiopia.com</p>
+                                        <p>Email: info@crs-worldwide.com</p>
                                         <p>Address: Bole Road, Addis Ababa</p>
                                     </div>
                                 </div>

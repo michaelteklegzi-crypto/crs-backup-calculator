@@ -239,7 +239,7 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
 
             {/* FOOTER */}
             <div style={{ marginTop: '50px', paddingTop: '20px', borderTop: `2px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: colors.mutedText }}>
-                <div>info@crs-ethiopia.com • +251 911 234 567</div>
+                <div>info@crs-worldwide.com • https://crs-worldwide.com</div>
                 <div>Proprietary Engineering Snapshot • Generated automatically from Field App.</div>
             </div>
 
