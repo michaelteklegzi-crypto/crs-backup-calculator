@@ -41,13 +41,16 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
             boxSizing: 'border-box'
         }}>
             {/* BRAND HEADER */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${colors.primary}`, paddingBottom: '20px', marginBottom: '30px' }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 800, color: colors.primary, letterSpacing: '-0.5px' }}>
-                        COMPLETE RENEWABLE SOLUTIONS
-                    </h1>
-                    <div style={{ fontSize: '14px', color: colors.mutedText, marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                        Power Architecture & Investment Report
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${colors.primary}`, paddingBottom: '20px', marginBottom: '30px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <img src="/images/crs_logo.png" alt="CRS Logo" style={{ height: '50px' }} crossOrigin="anonymous" />
+                    <div>
+                        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 800, color: colors.primary, letterSpacing: '-0.5px' }}>
+                            CLIMATE RESILIENT SOLUTION (CRS)
+                        </h1>
+                        <div style={{ fontSize: '14px', color: colors.mutedText, marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                            Power Architecture & Investment Report
+                        </div>
                     </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -164,26 +167,24 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
                         </div>
                     </div>
 
-                    {/* Recharts Area - explicitly light themed */}
+                    {/* Recharts Area - explicitly light themed without ResponsiveContainer for PDF rendering */}
                     <div style={{ height: '260px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorSolarLight" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={colors.primary} stopOpacity={0.2} />
-                                        <stop offset="95%" stopColor={colors.primary} stopOpacity={0.01} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                                <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: colors.mutedText }} interval={3} />
-                                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: colors.mutedText }} />
-                                
-                                <Area type="monotone" yAxisId="left" dataKey="solar" name="Solar Yield" stroke={colors.primary} strokeWidth={2} fill="url(#colorSolarLight)" />
-                                <Line type="step" yAxisId="left" dataKey="load" name="Load Demand" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="4 4" />
-                                
-                                <Legend wrapperStyle={{ fontSize: '12px' }} />
-                            </ComposedChart>
-                        </ResponsiveContainer>
+                        <ComposedChart width={600} height={260} data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorSolarLight" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={colors.primary} stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor={colors.primary} stopOpacity={0.01} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                            <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: colors.mutedText }} interval={3} />
+                            <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: colors.mutedText }} />
+                            
+                            <Area isAnimationActive={false} type="monotone" yAxisId="left" dataKey="solar" name="Solar Yield" stroke={colors.primary} strokeWidth={2} fill="url(#colorSolarLight)" />
+                            <Line isAnimationActive={false} type="step" yAxisId="left" dataKey="load" name="Load Demand" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+                            
+                            <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        </ComposedChart>
                     </div>
                 </div>
             </div>

@@ -103,11 +103,11 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose, applianceCatalog, fe
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
                 // Step 3: Fire mail client (open in same tab using location, or new tab)
-                const subject = encodeURIComponent("Your Engineered Solar Architecture Report");
+                const subject = encodeURIComponent(`Your Power Architecture Report - ${lead.name}`);
                 const body = encodeURIComponent(
 `Hi ${lead.name.split(' ')[0]},
 
-Thank you for requesting a power architecture report from Complete Renewable Solutions (CRS).
+Thank you for requesting a power architecture report from Climate Resilient Solution (CRS).
 
 After analyzing your electrical parameters, we have engineered a custom solution designed to secure your energy independence and reduce reliance on grid and diesel power.
 Please find your personalized Technical Proposal attached to this email as a PDF.
@@ -116,7 +116,7 @@ Let us know when you would like to schedule a consultation to discuss installati
 
 Best regards,
 
-Complete Renewable Solutions (CRS)
+Climate Resilient Solution (CRS)
 info@crs-ethiopia.com
 +251 911 234 567
 `
@@ -376,7 +376,7 @@ info@crs-ethiopia.com
 
     return (
         <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            position: 'fixed',  left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
@@ -970,8 +970,8 @@ info@crs-ethiopia.com
 
             {/* Preview Report Modal */}
             {previewReportLead && previewReportLead.proposals?.[0]?.analysis_json && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10000, overflowY: 'auto' }}>
-                    <div style={{ position: 'sticky', top: 0, padding: '1rem', background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid var(--color-border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10001 }}>
+                <div style={{ position: 'fixed',  left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10000, overflowY: 'auto' }}>
+                    <div style={{ position: 'sticky',  padding: '1rem', background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid var(--color-border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10001 }}>
                         <div style={{ color: 'white', fontWeight: 600 }}>Preview: {previewReportLead.name}'s Report</div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button onClick={() => { handleSendReport(previewReportLead); setPreviewReportLead(null); }} className="btn-primary">Send This Report</button>
@@ -999,9 +999,9 @@ info@crs-ethiopia.com
             {renderingReportForLead && renderingReportForLead.proposals?.[0]?.analysis_json && (
                 <div style={{
                     position: 'fixed',
-                    top: 0,
+                    
                     left: 0,
-                    visibility: 'hidden',
+                    top: '-10000px',
                     pointerEvents: 'none',
                     zIndex: -1,
                     overflow: 'hidden'
