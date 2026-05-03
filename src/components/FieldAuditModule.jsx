@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { 
     Activity, ArrowLeft, CheckCircle, ChevronRight, FileText, 
-    Plus, Save, Settings, AlertTriangle, Send
+    Plus, Save, Settings, AlertTriangle, Send, Download
 } from 'lucide-react';
 import { 
     calculatePowerKW, calculateThreePhaseMetrics, 
     calculateEquipmentLoad, runCrossCheck 
 } from '../utils/fieldLogic';
+import FieldAuditReportTemplate from './FieldAuditReportTemplate';
+import { generatePDFReport } from '../utils/pdfExport';
 
 const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     const [sites, setSites] = useState([]);
@@ -492,11 +494,19 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     if (activeSite) {
         return (
             <div className="animate-fade-in">
+                {/* Hidden Template for PDF Export */}
+                <div style={{ position: 'absolute', top: '-10000px', left: '-10000px' }}>
+                    <FieldAuditReportTemplate reportId="field-audit-report-new" siteData={formData} />
+                </div>
+                
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <button onClick={handleBack} className="btn-icon-only" style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <ArrowLeft size={16} /> Back to Sites
                     </button>
                     <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button onClick={() => generatePDFReport('field-audit-report-new', `${formData.client_name || 'Site'}_Audit_Report.pdf`)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <Download size={16} /> Export PDF
+                        </button>
                         <button onClick={() => handleSave(false)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Save size={16} /> Save Draft
                         </button>
