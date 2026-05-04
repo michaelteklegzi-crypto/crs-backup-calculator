@@ -10,7 +10,7 @@ export const DEFAULT_CONSTANTS = {
     SYSTEM_EFFICIENCY: 0.85,
     DEPTH_OF_DISCHARGE: 0.90, // Lithium Ion assumed as "best tech"
     PEAK_SUN_HOURS: 5.5, // Average for Ethiopia
-    INVERTER_OVERSIZE_FACTOR: 1.1, // Reduced from 1.25 to prevent massive oversizing steps
+    INVERTER_OVERSIZE_FACTOR: 1.25, // 25% buffer for startup surges
 
     // Component Unit Specifications (for sizing)
     SPEC_PV_WATTAGE: 550, // 550W Panel

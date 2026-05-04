@@ -251,7 +251,7 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, ho
                                 <div>
                                     <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'white', marginBottom: '0.5rem' }}>Configuration Validation</h4>
                                     <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.6' }}>
-                                        This {systemSize.recommended.inverterKw}kW architecture is sized to handle your peak continuous load of <strong>{formatNumber(systemSize.peakPowerW)}W</strong> with a <span style={{ color: 'var(--color-accent-emerald)', fontWeight: 600 }}>{(systemSize.recommended.inverterKw * 1000 - systemSize.peakPowerW) / 1000}kW headroom buffer</span> for startup surges.
+                                        This {systemSize.recommended.inverterKw}kW architecture is sized to handle your peak continuous load of <strong>{formatNumber(systemSize.peakPowerW)}W</strong> with a <span style={{ color: 'var(--color-accent-emerald)', fontWeight: 600 }}>{(((systemSize.recommended.inverterKw * 1000 - systemSize.peakPowerW) / 1000).toFixed(1))}kW headroom buffer</span> for startup surges.
                                     </p>
                                     <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.6', marginTop: '0.5rem' }}>
                                         The {systemSize.recommended.batteryKwh}kWh battery bank provides <strong>{outageHours} hours</strong> of guaranteed autonomy at full rated load, extending up to {Math.round(outageHours * 1.5)} hours under normal usage patterns.
