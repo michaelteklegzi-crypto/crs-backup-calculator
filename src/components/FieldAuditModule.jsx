@@ -52,12 +52,9 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
             power_factor: 0.85,
             phase_type: 'single_phase',
             measurements: {
-                phase: { r: '', s: '', t: '', l: '' },
-                scenarios: {
-                    normal: '',
-                    peak: '',
-                    full: ''
-                }
+                normal: { r: '', s: '', t: '', l: '' },
+                peak: { r: '', s: '', t: '', l: '' },
+                full: { r: '', s: '', t: '', l: '' }
             },
             equipment: [],
             general_info: {
@@ -171,132 +168,101 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
 
     const renderMeasurements = () => {
         const isThreePhase = formData.phase_type === 'three_phase';
-        const pMeas = formData.measurements.phase || { r: '', s: '', t: '', l: '' };
-        const sMeas = formData.measurements.scenarios || { normal: '', peak: '', full: '' };
         
-        // Auto Calculate
-        let phaseKw = 0;
-        let imbalance = null;
-        
-        if (isThreePhase) {
-            const r = parseFloat(pMeas.r) || 0;
-            const s = parseFloat(pMeas.s) || 0;
-            const t = parseFloat(pMeas.t) || 0;
-            imbalance = calculateThreePhaseMetrics(r, s, t);
-            phaseKw = calculatePowerKW(formData.voltage, imbalance.average, formData.power_factor, 'three_phase');
-        } else {
-            const l = parseFloat(pMeas.l) || 0;
-            phaseKw = calculatePowerKW(formData.voltage, l, formData.power_factor, 'single_phase');
-        }
-        
+        const scenarios = [
+            { key: 'normal', label: 'Measurement 1: Normal Load' },
+            { key: 'peak', label: 'Measurement 2: Peak Load' },
+            { key: 'full', label: 'Measurement 3: Full Load' }
+        ];
+
         return (
             <div style={{ display: 'grid', gap: '2rem' }}>
-                {/* Measurement 1: Phase Data */}
-                <div className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                        Measurement 1: Phase Data
-                    </h3>
+                {scenarios.map(scenario => {
+                    const sMeas = formData.measurements[scenario.key] || { r: '', s: '', t: '', l: '' };
                     
-                    {isThreePhase ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                            <div>
-                                <label className="label" style={{ color: '#ef4444' }}>R Phase (Amps)</label>
-                                <input 
-                                    type="number" className="input-field" value={pMeas.r} 
-                                    onChange={e => setFormData({...formData, measurements: {...formData.measurements, phase: {...pMeas, r: e.target.value}}})} 
-                                />
-                            </div>
-                            <div>
-                                <label className="label" style={{ color: '#eab308' }}>S Phase (Amps)</label>
-                                <input 
-                                    type="number" className="input-field" value={pMeas.s} 
-                                    onChange={e => setFormData({...formData, measurements: {...formData.measurements, phase: {...pMeas, s: e.target.value}}})} 
-                                />
-                            </div>
-                            <div>
-                                <label className="label" style={{ color: '#3b82f6' }}>T Phase (Amps)</label>
-                                <input 
-                                    type="number" className="input-field" value={pMeas.t} 
-                                    onChange={e => setFormData({...formData, measurements: {...formData.measurements, phase: {...pMeas, t: e.target.value}}})} 
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                        <div>
-                            <label className="label">Phase (Amps)</label>
-                            <input 
-                                type="number" className="input-field" value={pMeas.l} style={{ maxWidth: '300px' }}
-                                onChange={e => setFormData({...formData, measurements: {...formData.measurements, phase: {...pMeas, l: e.target.value}}})} 
-                            />
-                        </div>
-                    )}
+                    let phaseKw = 0;
+                    let imbalance = null;
                     
-                    {/* Realtime Calculated Stats */}
-                    <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', display: 'flex', gap: '2rem' }}>
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Calculated Power</div>
-                            <div style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600 }}>{phaseKw.toFixed(2)} kW</div>
-                        </div>
-                        {isThreePhase && imbalance && (
-                            <>
-                                <div>
-                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Average Current</div>
-                                    <div style={{ fontSize: '1.25rem', color: 'white' }}>{imbalance.average.toFixed(1)} A</div>
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Phase Imbalance</div>
-                                    <div style={{ fontSize: '1.25rem', color: imbalance.isImbalanced ? '#ef4444' : '#22c55e' }}>
-                                        {imbalance.maxDeviationPercent.toFixed(1)}%
-                                    </div>
-                                    {imbalance.isImbalanced && (
-                                        <div style={{ fontSize: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            <AlertTriangle size={12}/> Warning: > 20% deviation
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+                    if (isThreePhase) {
+                        const r = parseFloat(sMeas.r) || 0;
+                        const s = parseFloat(sMeas.s) || 0;
+                        const t = parseFloat(sMeas.t) || 0;
+                        imbalance = calculateThreePhaseMetrics(r, s, t);
+                        phaseKw = calculatePowerKW(formData.voltage, imbalance.average, formData.power_factor, 'three_phase');
+                    } else {
+                        const l = parseFloat(sMeas.l) || 0;
+                        phaseKw = calculatePowerKW(formData.voltage, l, formData.power_factor, 'single_phase');
+                    }
 
-                {/* Scenarios */}
-                <div className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                        Measurements 2 & 3: Load Scenarios
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                        <div>
-                            <label className="label">Normal Load (Amps)</label>
-                            <input 
-                                type="number" className="input-field" value={sMeas.normal} 
-                                onChange={e => setFormData({...formData, measurements: {...formData.measurements, scenarios: {...sMeas, normal: e.target.value}}})} 
-                            />
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                ~ {calculatePowerKW(formData.voltage, parseFloat(sMeas.normal)||0, formData.power_factor, 'single_phase').toFixed(2)} kW
+                    return (
+                        <div key={scenario.key} className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                            <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+                                {scenario.label}
+                            </h3>
+                            
+                            {isThreePhase ? (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                                    <div>
+                                        <label className="label" style={{ color: '#ef4444' }}>R Phase (Amps)</label>
+                                        <input 
+                                            type="number" className="input-field" value={sMeas.r} 
+                                            onChange={e => setFormData({...formData, measurements: {...formData.measurements, [scenario.key]: {...sMeas, r: e.target.value}}})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label" style={{ color: '#eab308' }}>S Phase (Amps)</label>
+                                        <input 
+                                            type="number" className="input-field" value={sMeas.s} 
+                                            onChange={e => setFormData({...formData, measurements: {...formData.measurements, [scenario.key]: {...sMeas, s: e.target.value}}})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="label" style={{ color: '#3b82f6' }}>T Phase (Amps)</label>
+                                        <input 
+                                            type="number" className="input-field" value={sMeas.t} 
+                                            onChange={e => setFormData({...formData, measurements: {...formData.measurements, [scenario.key]: {...sMeas, t: e.target.value}}})} 
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="label">Phase (Amps)</label>
+                                    <input 
+                                        type="number" className="input-field" value={sMeas.l} style={{ maxWidth: '300px' }}
+                                        onChange={e => setFormData({...formData, measurements: {...formData.measurements, [scenario.key]: {...sMeas, l: e.target.value}}})} 
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Realtime Calculated Stats */}
+                            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', display: 'flex', gap: '2rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Calculated Power</div>
+                                    <div style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600 }}>{phaseKw.toFixed(2)} kW</div>
+                                </div>
+                                {isThreePhase && imbalance && (
+                                    <>
+                                        <div>
+                                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Average Current</div>
+                                            <div style={{ fontSize: '1.25rem', color: 'white' }}>{imbalance.average.toFixed(1)} A</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Phase Imbalance</div>
+                                            <div style={{ fontSize: '1.25rem', color: imbalance.isImbalanced ? '#ef4444' : '#22c55e' }}>
+                                                {imbalance.maxDeviationPercent.toFixed(1)}%
+                                            </div>
+                                            {imbalance.isImbalanced && (
+                                                <div style={{ fontSize: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                    <AlertTriangle size={12}/> Warning: > 20% deviation
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
-                        <div>
-                            <label className="label">Peak Load (Amps)</label>
-                            <input 
-                                type="number" className="input-field" value={sMeas.peak} 
-                                onChange={e => setFormData({...formData, measurements: {...formData.measurements, scenarios: {...sMeas, peak: e.target.value}}})} 
-                            />
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                ~ {calculatePowerKW(formData.voltage, parseFloat(sMeas.peak)||0, formData.power_factor, 'single_phase').toFixed(2)} kW
-                            </div>
-                        </div>
-                        <div>
-                            <label className="label">Full Load (Amps)</label>
-                            <input 
-                                type="number" className="input-field" value={sMeas.full} 
-                                onChange={e => setFormData({...formData, measurements: {...formData.measurements, scenarios: {...sMeas, full: e.target.value}}})} 
-                            />
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                ~ {calculatePowerKW(formData.voltage, parseFloat(sMeas.full)||0, formData.power_factor, 'single_phase').toFixed(2)} kW
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    );
+                })}
             </div>
         );
     };
@@ -392,8 +358,19 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
 
     const renderAnalysis = () => {
         // Run cross check
-        const sMeas = formData.measurements.scenarios || { peak: 0 };
-        const measuredPeakKw = calculatePowerKW(formData.voltage, parseFloat(sMeas.peak)||0, formData.power_factor, 'single_phase');
+        const isThreePhase = formData.phase_type === 'three_phase';
+        const peakMeas = formData.measurements.peak || { r: '', s: '', t: '', l: '' };
+        
+        let measuredPeakKw = 0;
+        if (isThreePhase) {
+            const r = parseFloat(peakMeas.r) || 0;
+            const s = parseFloat(peakMeas.s) || 0;
+            const t = parseFloat(peakMeas.t) || 0;
+            const avg = (r + s + t) / 3;
+            measuredPeakKw = calculatePowerKW(formData.voltage, avg, formData.power_factor, 'three_phase');
+        } else {
+            measuredPeakKw = calculatePowerKW(formData.voltage, parseFloat(peakMeas.l)||0, formData.power_factor, 'single_phase');
+        }
         const eqTotals = calculateEquipmentLoad(formData.equipment);
         
         const crossCheck = runCrossCheck(measuredPeakKw, eqTotals.totalKw);
@@ -491,23 +468,53 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     };
 
     const renderReview = () => (
-        <div className="card" style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'center', padding: '3rem' }}>
-            <CheckCircle size={48} color="var(--color-accent-emerald)" style={{ margin: '0 auto 1.5rem', opacity: 0.8 }} />
-            <h3 style={{ fontSize: '1.5rem', color: 'white', marginBottom: '1rem' }}>Review & Finalize</h3>
-            <p style={{ color: '#94a3b8', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
-                Please ensure all measurements and equipment data have been entered correctly. You can save this audit as a draft to return later, submit it to the system, or generate a PDF report for the client.
-            </p>
+        <div className="card" style={{ background: 'rgba(255,255,255,0.02)', padding: '3rem 2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <CheckCircle size={48} color="var(--color-accent-emerald)" style={{ margin: '0 auto 1.5rem', opacity: 0.8 }} />
+                <h3 style={{ fontSize: '1.5rem', color: 'white', marginBottom: '1rem' }}>Review & Finalize</h3>
+                <p style={{ color: '#94a3b8', maxWidth: '500px', margin: '0 auto' }}>
+                    You have completed all data entry steps. Please choose your next action below depending on whether you are still collecting data or ready to generate the final proposal.
+                </p>
+            </div>
             
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <button onClick={() => generatePDFReport('field-audit-report-new', `${formData.client_name || 'Site'}_Audit_Report.pdf`)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
-                    <Download size={18} /> Export PDF Report
-                </button>
-                <button onClick={() => handleSave(false)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
-                    <Save size={18} /> Save as Draft
-                </button>
-                <button onClick={() => handleSave(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
-                    <CheckCircle size={18} /> Submit Final Audit
-                </button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', maxWidth: '900px', margin: '0 auto' }}>
+                
+                {/* Save Draft */}
+                <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ marginBottom: '1rem' }}><Save size={24} color="#94a3b8" /></div>
+                    <h4 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Save Progress</h4>
+                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem', flex: 1 }}>
+                        Saves your current inputs to the database. Use this if you are not finished with the audit and need to return later.
+                    </p>
+                    <button onClick={() => handleSave(false)} className="btn-secondary" style={{ width: '100%', padding: '0.75rem' }}>
+                        Save as Draft
+                    </button>
+                </div>
+
+                {/* Submit to Admin / Finalize */}
+                <div style={{ border: '1px solid var(--color-primary)', borderRadius: '1rem', padding: '1.5rem', display: 'flex', flexDirection: 'column', background: 'rgba(56, 189, 248, 0.05)' }}>
+                    <div style={{ marginBottom: '1rem' }}><CheckCircle size={24} color="var(--color-primary)" /></div>
+                    <h4 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Submit & Analyze</h4>
+                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem', flex: 1 }}>
+                        Locks the audit and runs the engineering simulator to generate the recommended system sizes. Use this when the audit is 100% complete.
+                    </p>
+                    <button onClick={() => handleSave(true)} className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                        Submit Final Audit
+                    </button>
+                </div>
+
+                {/* PDF Export */}
+                <div style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1rem', padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ marginBottom: '1rem' }}><FileText size={24} color="#f59e0b" /></div>
+                    <h4 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Produce Report</h4>
+                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem', flex: 1 }}>
+                        Downloads a PDF report of the raw field data. You do NOT need to submit the audit to generate this.
+                    </p>
+                    <button onClick={() => generatePDFReport('field-audit-report-new', `${formData.client_name || 'Site'}_Audit_Report.pdf`)} className="btn-secondary" style={{ width: '100%', padding: '0.75rem' }}>
+                        Export PDF Report
+                    </button>
+                </div>
+
             </div>
         </div>
     );
@@ -621,28 +628,24 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
             ) : (
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {sites.map(site => (
-                        <div key={site.id} onClick={() => handleOpenSite(site)} className="card" style={{ padding: '1.25rem', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}>
-                            <div>
-                                <div style={{ fontSize: '1.1rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>
-                                    {site.client_name || 'Unnamed Site'}
+                        <div key={site.id} onClick={() => handleOpenSite(site)} className="card" style={{ padding: '0', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}>
+                            <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr auto', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ fontWeight: 600, color: 'white' }}>{site.client_name || 'Unnamed Site'}</div>
+                                <div style={{ color: '#cbd5e1', fontSize: '0.9rem' }}>{site.location || 'No location'}</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{new Date(site.created_at).toLocaleDateString()}</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{site.phase_type === 'three_phase' ? '3-Phase' : '1-Phase'}</div>
+                                <div style={{ display: 'flex' }}>
+                                    <span style={{ 
+                                        padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase',
+                                        background: site.status === 'draft' ? 'rgba(255,255,255,0.1)' : site.status === 'submitted' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                                        color: site.status === 'draft' ? '#cbd5e1' : site.status === 'submitted' ? '#60a5fa' : '#10b981'
+                                    }}>
+                                        {site.status}
+                                    </span>
                                 </div>
-                                <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', gap: '1rem' }}>
-                                    <span>{site.location || 'No location'}</span>
-                                    <span>•</span>
-                                    <span>{site.phase_type === 'three_phase' ? '3-Phase' : '1-Phase'}</span>
-                                    <span>•</span>
-                                    <span>By: {site.entered_by_name}</span>
+                                <div>
+                                    <ChevronRight size={20} color="#64748b" />
                                 </div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                <span style={{ 
-                                    padding: '0.25rem 0.75rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase',
-                                    background: site.status === 'draft' ? 'rgba(255,255,255,0.1)' : site.status === 'submitted' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                                    color: site.status === 'draft' ? '#cbd5e1' : site.status === 'submitted' ? '#60a5fa' : '#10b981'
-                                }}>
-                                    {site.status}
-                                </span>
-                                <ChevronRight size={20} color="#64748b" />
                             </div>
                         </div>
                     ))}

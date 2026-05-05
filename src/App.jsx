@@ -287,7 +287,7 @@ function App() {
                                     filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.1))'
                                 }}
                             />
-                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', letterSpacing: '1px' }}>CRS - Climate Resilience Solutions</span>
+                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', letterSpacing: '1px' }}>CRS</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

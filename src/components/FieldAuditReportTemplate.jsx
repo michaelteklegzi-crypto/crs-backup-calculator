@@ -27,21 +27,24 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
     };
 
     const isThreePhase = phase_type === 'three_phase';
-    const pMeas = measurements?.phase || { r: 0, s: 0, t: 0, l: 0 };
-    const sMeas = measurements?.scenarios || { normal: 0, peak: 0, full: 0 };
+    const nMeas = measurements?.normal || { r: 0, s: 0, t: 0, l: 0 };
+    const pMeas = measurements?.peak || { r: 0, s: 0, t: 0, l: 0 };
     
     // Auto Calculate Measurements
-    let phaseKw = 0;
+    let phaseKw = 0; // Normal load
+    let peakKw = 0;  // Peak load
     let imbalance = null;
     
     if (isThreePhase) {
-        imbalance = calculateThreePhaseMetrics(pMeas.r, pMeas.s, pMeas.t);
+        imbalance = calculateThreePhaseMetrics(parseFloat(nMeas.r)||0, parseFloat(nMeas.s)||0, parseFloat(nMeas.t)||0);
         phaseKw = calculatePowerKW(voltage, imbalance.average, power_factor, 'three_phase');
+        
+        const avgPeak = ((parseFloat(pMeas.r)||0) + (parseFloat(pMeas.s)||0) + (parseFloat(pMeas.t)||0)) / 3;
+        peakKw = calculatePowerKW(voltage, avgPeak, power_factor, 'three_phase');
     } else {
-        phaseKw = calculatePowerKW(voltage, pMeas.l, power_factor, 'single_phase');
+        phaseKw = calculatePowerKW(voltage, parseFloat(nMeas.l)||0, power_factor, 'single_phase');
+        peakKw = calculatePowerKW(voltage, parseFloat(pMeas.l)||0, power_factor, 'single_phase');
     }
-
-    const peakKw = calculatePowerKW(voltage, sMeas.peak, power_factor, isThreePhase ? 'three_phase' : 'single_phase');
 
     // Equipment Load
     const eqTotals = calculateEquipmentLoad(equipment || []);
@@ -62,7 +65,7 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${colors.primary}`, paddingBottom: '20px', marginBottom: '30px' }}>
                 <div>
                     <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 800, color: colors.primary, letterSpacing: '-0.5px' }}>
-                        COMPLETE RENEWABLE SOLUTIONS
+                        CLIMATE RESILIENCE SOLUTIONS
                     </h1>
                     <div style={{ fontSize: '14px', color: colors.mutedText, marginTop: '4px', letterSpacing: '1px', textTransform: 'uppercase' }}>
                         Field Load Measurement & Energy Analysis
