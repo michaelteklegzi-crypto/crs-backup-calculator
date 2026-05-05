@@ -490,59 +490,115 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
         );
     };
 
+    const renderReview = () => (
+        <div className="card" style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'center', padding: '3rem' }}>
+            <CheckCircle size={48} color="var(--color-accent-emerald)" style={{ margin: '0 auto 1.5rem', opacity: 0.8 }} />
+            <h3 style={{ fontSize: '1.5rem', color: 'white', marginBottom: '1rem' }}>Review & Finalize</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '2rem', maxWidth: '400px', margin: '0 auto 2rem' }}>
+                Please ensure all measurements and equipment data have been entered correctly. You can save this audit as a draft to return later, submit it to the system, or generate a PDF report for the client.
+            </p>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                <button onClick={() => generatePDFReport('field-audit-report-new', `${formData.client_name || 'Site'}_Audit_Report.pdf`)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
+                    <Download size={18} /> Export PDF Report
+                </button>
+                <button onClick={() => handleSave(false)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
+                    <Save size={18} /> Save as Draft
+                </button>
+                <button onClick={() => handleSave(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem' }}>
+                    <CheckCircle size={18} /> Submit Final Audit
+                </button>
+            </div>
+        </div>
+    );
+
     // --- Main Render ---
     if (activeSite) {
+        const steps = [
+            { id: 'general', title: '1. Site Info' },
+            { id: 'measurements', title: '2. Measurements' },
+            { id: 'equipment', title: '3. Equipment' },
+            ...(role === 'admin' ? [{ id: 'analysis', title: '4. Intelligence' }] : []),
+            { id: 'review', title: role === 'admin' ? '5. Finalize' : '4. Finalize' }
+        ];
+
+        const currentIndex = steps.findIndex(s => s.id === activeTab) || 0;
+        const currentStepId = steps[currentIndex]?.id || 'general';
+
+        const goToNext = () => {
+            if (currentIndex < steps.length - 1) setActiveTab(steps[currentIndex + 1].id);
+        };
+
+        const goToPrev = () => {
+            if (currentIndex > 0) setActiveTab(steps[currentIndex - 1].id);
+        };
+
         return (
             <div className="animate-fade-in">
                 {/* Hidden Template for PDF Export */}
-                <div style={{ position: 'fixed',  top: 0, left: 0,   pointerEvents: 'none', zIndex: -1, overflow: 'hidden' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, pointerEvents: 'none', zIndex: -1, overflow: 'hidden' }}>
                     <FieldAuditReportTemplate reportId="field-audit-report-new" siteData={formData} />
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <button onClick={handleBack} className="btn-icon-only" style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <ArrowLeft size={16} /> Back to Sites
-                    </button>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button onClick={() => generatePDFReport('field-audit-report-new', `${formData.client_name || 'Site'}_Audit_Report.pdf`)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
-                            <Download size={16} /> Export PDF
+                {/* Clean Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <button onClick={handleBack} className="btn-icon-only" style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <ArrowLeft size={16} /> Back
                         </button>
-                        <button onClick={() => handleSave(false)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Save size={16} /> Save Draft
-                        </button>
-                        <button onClick={() => handleSave(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <CheckCircle size={16} /> Submit Audit
-                        </button>
+                        <h2 style={{ fontSize: '1.25rem', color: 'white', margin: 0 }}>
+                            {formData.client_name ? `Audit: ${formData.client_name}` : 'New Site Audit'}
+                        </h2>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '1.5rem' }}>
-                    <button 
-                        onClick={() => setActiveTab('general')}
-                        style={{ padding: '0.75rem 1.5rem', background: 'transparent', borderBottom: activeTab === 'general' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'general' ? 'white' : '#94a3b8', cursor: 'pointer' }}
-                    >General Info</button>
-                    <button 
-                        onClick={() => setActiveTab('measurements')}
-                        style={{ padding: '0.75rem 1.5rem', background: 'transparent', borderBottom: activeTab === 'measurements' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'measurements' ? 'white' : '#94a3b8', cursor: 'pointer' }}
-                    >Measurements</button>
-                    <button 
-                        onClick={() => setActiveTab('equipment')}
-                        style={{ padding: '0.75rem 1.5rem', background: 'transparent', borderBottom: activeTab === 'equipment' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'equipment' ? 'white' : '#94a3b8', cursor: 'pointer' }}
-                    >Equipment List</button>
-                    {role === 'admin' && (
+                {/* Step Wizard Header */}
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                    {steps.map((step, index) => (
                         <button 
-                            onClick={() => setActiveTab('analysis')}
-                            style={{ padding: '0.75rem 1.5rem', background: 'transparent', borderBottom: activeTab === 'analysis' ? '2px solid var(--color-accent-emerald)' : '2px solid transparent', color: activeTab === 'analysis' ? 'var(--color-accent-emerald)' : '#94a3b8', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                        ><Activity size={14}/> Intelligence</button>
-                    )}
+                            key={step.id}
+                            onClick={() => setActiveTab(step.id)}
+                            style={{ 
+                                padding: '0.75rem 1.5rem', 
+                                background: 'transparent', 
+                                borderBottom: currentStepId === step.id ? '2px solid var(--color-primary)' : '2px solid transparent', 
+                                color: currentStepId === step.id ? 'white' : '#94a3b8', 
+                                cursor: 'pointer',
+                                fontWeight: currentStepId === step.id ? 600 : 400,
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {step.title}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Form Content */}
-                {activeTab === 'general' && renderGeneralInfo()}
-                {activeTab === 'measurements' && renderMeasurements()}
-                {activeTab === 'equipment' && renderEquipment()}
-                {activeTab === 'analysis' && role === 'admin' && renderAnalysis()}
+                <div style={{ minHeight: '400px' }}>
+                    {currentStepId === 'general' && renderGeneralInfo()}
+                    {currentStepId === 'measurements' && renderMeasurements()}
+                    {currentStepId === 'equipment' && renderEquipment()}
+                    {currentStepId === 'analysis' && role === 'admin' && renderAnalysis()}
+                    {currentStepId === 'review' && renderReview()}
+                </div>
+
+                {/* Wizard Footer Navigation */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button 
+                        onClick={goToPrev} 
+                        disabled={currentIndex === 0}
+                        className="btn-secondary" 
+                        style={{ opacity: currentIndex === 0 ? 0 : 1, pointerEvents: currentIndex === 0 ? 'none' : 'auto' }}
+                    >
+                        Previous Step
+                    </button>
+                    
+                    {currentIndex < steps.length - 1 && (
+                        <button onClick={goToNext} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Next Step <ChevronRight size={16} />
+                        </button>
+                    )}
+                </div>
             </div>
         );
     }
