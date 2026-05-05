@@ -21,7 +21,7 @@ export const DEFAULT_CONSTANTS = {
     COST_UNIT_PV_PANEL: 15000,
     COST_UNIT_BATTERY: 180000,
     COST_UNIT_INVERTER: 85000, // 5kW 1-Phase
-    COST_UNIT_INVERTER_3PH: 250000, // 15kW 3-Phase Default
+    COST_UNIT_INVERTER_3PH: 250000, // 10kW 3-Phase Default
 
     // Other Costs
     COST_INSTALLATION_FLAT: 50000,
@@ -98,7 +98,7 @@ export function calculateSystemSize(loadProfile, outageHours, phase = 'unknown',
 
     if (phase === '3-phase') {
         is3Phase = true;
-        const unitSize = 15; // 15kW Unit for 3-Phase
+        const unitSize = 10; // 10kW Unit for 3-Phase
         finalInverterKw = Math.max(unitSize, Math.ceil(rawInverterKw / unitSize) * unitSize);
         numInverters = Math.ceil(finalInverterKw / unitSize);
     } else {

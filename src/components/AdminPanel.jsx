@@ -20,7 +20,7 @@ const DESCRIPTIONS = {
     COST_UNIT_PV_PANEL: "Cost of ONE PV Panel Unit (ETB) - Auto-calculated.",
     COST_UNIT_BATTERY: "Cost of ONE Battery Unit (ETB) - Auto-calculated.",
     COST_UNIT_INVERTER: "Cost of ONE 1-Phase Inverter (5kW) - Auto-calculated.",
-    COST_UNIT_INVERTER_3PH: "Cost of ONE 3-Phase Inverter (15kW) - Auto-calculated.",
+    COST_UNIT_INVERTER_3PH: "Cost of ONE 3-Phase Inverter (10kW) - Auto-calculated.",
 
     COST_INSTALLATION_FLAT: "Flat fee for installation labor and logistics (ETB).",
     MAINTENANCE_ANNUAL_SOLAR: "Annual maintenance cost for cleaning and checkups (ETB).",
