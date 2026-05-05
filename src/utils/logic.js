@@ -13,7 +13,7 @@ export const DEFAULT_CONSTANTS = {
     INVERTER_OVERSIZE_FACTOR: 1.25, // 25% buffer for startup surges
 
     // Component Unit Specifications (for sizing)
-    SPEC_PV_WATTAGE: 550, // 550W Panel
+    SPEC_PV_WATTAGE: 500, // 500W Panel
     SPEC_BATTERY_KWH: 5,   // 5kWh Battery Unit
     SPEC_INVERTER_KW: 5,   // 5kW Inverter Unit
 

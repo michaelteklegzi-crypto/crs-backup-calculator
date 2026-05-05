@@ -122,7 +122,13 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: '#f59e0b' }}></div>
                     <Sun size={32} color="#f59e0b" style={{ marginBottom: '12px' }} />
                     <div style={{ fontSize: '28px', fontWeight: 800 }}>{pvKw} <span style={{ fontSize: '14px', fontWeight: 500, color: colors.mutedText }}>kWp</span></div>
-                    <div style={{ fontSize: '13px', color: colors.mutedText, marginTop: '4px' }}>Monocrystalline PV Array</div>
+                    <div style={{ fontSize: '13px', color: colors.mutedText, marginTop: '4px' }}>PV Array Peak Power</div>
+                    <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '6px', fontWeight: 600 }}>
+                        {systemSize.recommended.units?.panels || Math.ceil((pvKw * 1000) / 500)}x 500W Panels
+                    </div>
+                    <div style={{ fontSize: '11px', color: colors.mutedText, marginTop: '2px' }}>
+                        (Est. Area: {(systemSize.recommended.units?.panels || Math.ceil((pvKw * 1000) / 500)) * 2.5} m²)
+                    </div>
                 </div>
 
                 {/* Battery */}

@@ -238,7 +238,9 @@ const PremiumResults = ({ systemSize, financials, comparisonData, hourlyData, ho
                                     {pvKw} <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>kWp</span>
                                 </div>
                                 <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>PV Array Peak Power</div>
-                                {technicalView && <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', marginTop: '0.5rem' }}>Monocrystalline • High Efficiency</div>}
+                                <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: '0.5rem' }}>
+                                    {systemSize.recommended.units.panels}x 500W Panels (Est. {systemSize.recommended.units.panels * 2.5} m²)
+                                </div>
                             </div>
                         </div>
 

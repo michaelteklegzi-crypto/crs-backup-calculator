@@ -13,7 +13,7 @@ const DESCRIPTIONS = {
     PEAK_SUN_HOURS: "Average daily peak sun hours for the region.",
     INVERTER_OVERSIZE_FACTOR: "Ratio of Inverter Size to Peak Load (Safety margin).",
 
-    SPEC_PV_WATTAGE: "Wattage of a single PV Panel (e.g., 550W).",
+    SPEC_PV_WATTAGE: "Wattage of a single PV Panel (e.g., 500W).",
     SPEC_BATTERY_KWH: "Capacity of a single Battery Unit (e.g., 5kWh).",
     SPEC_INVERTER_KW: "Capacity of a single Inverter Unit (e.g., 5kW).",
 
