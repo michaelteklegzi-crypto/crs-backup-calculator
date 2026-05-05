@@ -287,7 +287,7 @@ function App() {
                                     filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.1))'
                                 }}
                             />
-                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', letterSpacing: '1px' }}>CRS</span>
+                            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', letterSpacing: '1px' }}>CRS - Climate Resilience Solutions</span>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -611,7 +611,7 @@ function App() {
                                 <h2 style={{ color: 'white', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Info /> About CRS</h2>
 
                                 <div className="prose" style={{ color: '#cbd5e1' }}>
-                                    <p><strong>CRS (Complete Renewable Solutions)</strong> is dedicated to providing reliable, sustainable energy for Ethiopia.</p>
+                                    <p><strong>CRS - Climate Resilience Solutions</strong> is dedicated to providing reliable, sustainable energy for Ethiopia.</p>
                                     <p>We specialize in hybrid solar systems that ensure 24/7 power availability, reducing reliance on the unstable grid and expensive diesel generators.</p>
                                     <p>Our solutions are tailored for both residential homes and small-to-medium enterprises, offering seamless integration with existing electrical infrastructure.</p>
                                     <br />
