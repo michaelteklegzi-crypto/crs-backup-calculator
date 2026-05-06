@@ -393,7 +393,7 @@ https://crs-worldwide.com
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
                     <button
                         onClick={() => setActiveTab('field_audits')}
                         style={{

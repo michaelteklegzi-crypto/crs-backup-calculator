@@ -272,7 +272,7 @@ function App() {
                     WebkitBackdropFilter: 'blur(16px)',
                     borderBottom: '1px solid var(--color-border-glass)'
                 }}>
-                    <div className="container" style={{ height: '90px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="container" style={{ minHeight: '90px', padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                         <div
                             onClick={() => setStep(0)}
                             style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
