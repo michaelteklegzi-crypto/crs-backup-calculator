@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Info, Database, Settings, ChevronDown, ChevronRight, User, Phone, MapPin, Calendar, DollarSign, FileText, RefreshCw, Save, Truck, Activity } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { runCostEngine } from '../utils/costEngine';
+import { calculateSystemSize, calculateFinancials, calculateHourlyEnergy } from '../utils/logic';
 import PremiumResults from './PremiumResults';
 import PDFReportTemplate from './PDFReportTemplate';
 import { generatePDFReport } from '../utils/pdfExport';
@@ -71,6 +72,12 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose, applianceCatalog, fe
     // Lead Editing State
     const [editingLead, setEditingLead] = useState(null);
     const [editLeadData, setEditLeadData] = useState({});
+
+    // Proposal Editing State
+    const [editingProposal, setEditingProposal] = useState(null);
+    const [editAppliances, setEditAppliances] = useState([]);
+    const [editOutageHours, setEditOutageHours] = useState(4);
+    const [editPhase, setEditPhase] = useState('single');
 
     const handleSendReport = async (lead) => {
         const proposal = lead.proposals?.[0];
@@ -193,6 +200,68 @@ https://crs-worldwide.com
         } catch (err) {
             console.error('Error updating lead:', err);
             alert('Failed to update lead.');
+        }
+    };
+
+    const startEditProposal = (proposal) => {
+        setEditingProposal(proposal.id);
+        const json = proposal.analysis_json || {};
+        const cfg = json.config || {};
+        setEditAppliances(cfg.appliances || []);
+        setEditOutageHours(cfg.outageHours || 4);
+        setEditPhase(cfg.phase || 'single');
+    };
+
+    const addEditAppliance = () => {
+        setEditAppliances([...editAppliances, { name: '', watts: 0, hours: 0, quantity: 1, dutyCycle: 1 }]);
+    };
+
+    const removeEditAppliance = (index) => {
+        setEditAppliances(editAppliances.filter((_, i) => i !== index));
+    };
+
+    const updateEditAppliance = (index, field, value) => {
+        const updated = [...editAppliances];
+        updated[index] = { ...updated[index], [field]: field === 'name' ? value : parseFloat(value) || 0 };
+        setEditAppliances(updated);
+    };
+
+    const recalculateAndSaveProposal = async (proposal) => {
+        try {
+            if (editAppliances.length === 0) return alert('Add at least one appliance.');
+            const phaseVal = editPhase === '3-phase' ? '3-phase' : 'single';
+            const size = calculateSystemSize(editAppliances, editOutageHours, phaseVal, constants);
+            const money = calculateFinancials(size, { outageHoursPerDay: editOutageHours }, constants);
+            const hourlyResult = calculateHourlyEnergy(size, size.totalDailyEnergyWh, 'residential', editAppliances);
+
+            const updatedJson = {
+                systemSize: size,
+                financials: money,
+                comparisonData: money.comparisonData,
+                hourlyData: hourlyResult?.data || [],
+                hourlyNote: hourlyResult?.note || '',
+                config: {
+                    appliances: editAppliances,
+                    outageHours: editOutageHours,
+                    phase: phaseVal,
+                    userType: proposal.analysis_json?.config?.userType || 'residential'
+                }
+            };
+
+            const { error } = await supabase.from('proposals').update({
+                system_size_pv_kw: size.recommended.pvKw,
+                system_size_battery_kwh: size.recommended.batteryKwh,
+                system_size_inverter_kw: size.recommended.inverterKw,
+                total_capex: money.capexSolar,
+                analysis_json: updatedJson
+            }).eq('id', proposal.id);
+            if (error) throw error;
+            setEditingProposal(null);
+            fetchLeads();
+            alert('Proposal recalculated and saved.');
+        } catch (err) {
+            console.error('Error recalculating proposal:', err);
+            alert('Failed to recalculate: ' + err.message);
         }
     };
 
@@ -643,6 +712,102 @@ https://crs-worldwide.com
                                                             ) : <div style={{ fontSize: '0.9rem', color: '#64748b' }}>None</div>}
                                                         </div>
                                                     </div>
+
+                                                    {/* Technical Proposal Data */}
+                                                    {lead.proposals?.length > 0 && (
+                                                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                                <h4 style={{ color: '#cbd5e1', fontSize: '0.9rem', textTransform: 'uppercase', margin: 0 }}>System Design</h4>
+                                                                {editingProposal === lead.proposals[0].id ? (
+                                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                        <button onClick={() => recalculateAndSaveProposal(lead.proposals[0])} style={{ padding: '4px 12px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '4px', color: '#10b981', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Recalculate & Save</button>
+                                                                        <button onClick={() => setEditingProposal(null)} style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#94a3b8', fontSize: '0.75rem', cursor: 'pointer' }}>Cancel</button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button onClick={() => startEditProposal(lead.proposals[0])} style={{ padding: '4px 12px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '4px', color: '#60a5fa', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Edit Equipment & Recalculate</button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Current System Values - always shown */}
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: editingProposal === lead.proposals[0].id ? '1.5rem' : 0 }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>PV Array</div>
+                                                                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#60a5fa' }}>{lead.proposals[0].system_size_pv_kw} kW</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Battery</div>
+                                                                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#10b981' }}>{lead.proposals[0].system_size_battery_kwh} kWh</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Inverter</div>
+                                                                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f59e0b' }}>{lead.proposals[0].system_size_inverter_kw} kW</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Backup</div>
+                                                                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'white' }}>{lead.proposals[0].analysis_json?.config?.outageHours || 4}h</div>
+                                                                </div>
+                                                                <div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>CAPEX</div>
+                                                                    <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'white' }}>{formatCurrency(lead.proposals[0].total_capex)}</div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Equipment Editor */}
+                                                            {editingProposal === lead.proposals[0].id && (
+                                                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', padding: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                                    {/* Config row */}
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                                                        <div>
+                                                                            <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Backup Hours</label>
+                                                                            <input type="number" className="input-field" value={editOutageHours} onChange={e => setEditOutageHours(parseFloat(e.target.value) || 0)} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Phase</label>
+                                                                            <select className="input-field" value={editPhase} onChange={e => setEditPhase(e.target.value)} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }}>
+                                                                                <option value="single" style={{ background: '#0f172a', color: 'white' }}>Single Phase</option>
+                                                                                <option value="3-phase" style={{ background: '#0f172a', color: 'white' }}>3-Phase</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Equipment List</label>
+                                                                        <button onClick={addEditAppliance} style={{ padding: '2px 10px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '4px', color: '#60a5fa', fontSize: '0.7rem', cursor: 'pointer' }}>+ Add Item</button>
+                                                                    </div>
+
+                                                                    {editAppliances.length === 0 && (
+                                                                        <div style={{ textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.85rem' }}>No appliance data stored for this proposal. Add items to recalculate.</div>
+                                                                    )}
+
+                                                                    {editAppliances.map((app, idx) => (
+                                                                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.7fr 0.7fr auto', gap: '0.5rem', marginBottom: '0.4rem', alignItems: 'end' }}>
+                                                                            <div>
+                                                                                {idx === 0 && <label style={{ fontSize: '0.65rem', color: '#475569' }}>Name</label>}
+                                                                                <input className="input-field" value={app.name} onChange={e => updateEditAppliance(idx, 'name', e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                {idx === 0 && <label style={{ fontSize: '0.65rem', color: '#475569' }}>Watts</label>}
+                                                                                <input type="number" className="input-field" value={app.watts} onChange={e => updateEditAppliance(idx, 'watts', e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                {idx === 0 && <label style={{ fontSize: '0.65rem', color: '#475569' }}>Hours</label>}
+                                                                                <input type="number" className="input-field" value={app.hours} onChange={e => updateEditAppliance(idx, 'hours', e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                {idx === 0 && <label style={{ fontSize: '0.65rem', color: '#475569' }}>Qty</label>}
+                                                                                <input type="number" className="input-field" value={app.quantity} onChange={e => updateEditAppliance(idx, 'quantity', e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }} />
+                                                                            </div>
+                                                                            <div>
+                                                                                {idx === 0 && <label style={{ fontSize: '0.65rem', color: '#475569' }}>Duty</label>}
+                                                                                <input type="number" className="input-field" value={app.dutyCycle} step="0.1" onChange={e => updateEditAppliance(idx, 'dutyCycle', e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }} />
+                                                                            </div>
+                                                                            <button onClick={() => removeEditAppliance(idx)} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '4px', color: '#ef4444', fontSize: '0.7rem', padding: '0.35rem 0.5rem', cursor: 'pointer', marginBottom: '1px' }}>✕</button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                                     {/* Actions Panel */}
                                                     {lead.proposals?.length > 0 && (

@@ -146,7 +146,13 @@ function App() {
                 financials: money,
                 comparisonData: money.comparisonData,
                 hourlyData: hourlyResult.data,
-                hourlyNote: hourlyResult.note
+                hourlyNote: hourlyResult.note,
+                config: {
+                    appliances: appliances.map(a => ({ name: a.name, watts: a.watts, hours: a.hours, quantity: a.quantity, dutyCycle: a.dutyCycle || 1 })),
+                    outageHours,
+                    phase,
+                    userType
+                }
             });
             setWarnings(optim);
             // setShowLeadCapture(true); // REMOVED: No longer gatekeeping results
