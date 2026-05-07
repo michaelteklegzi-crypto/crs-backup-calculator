@@ -50,6 +50,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
             location: '',
             voltage: 220,
             power_factor: 0.85,
+            backup_hours: 4,
             phase_type: 'single_phase',
             measurements: {
                 normal: { r: '', s: '', t: '', l: '' },
@@ -152,9 +153,16 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                     className="input-field" value={formData.phase_type}
                     onChange={e => setFormData({...formData, phase_type: e.target.value})}
                 >
-                    <option value="single_phase">Single Phase (1-Ph)</option>
-                    <option value="three_phase">Three Phase (3-Ph)</option>
+                    <option value="single_phase" style={{ background: '#0f172a', color: 'white' }}>Single Phase (1-Ph)</option>
+                    <option value="three_phase" style={{ background: '#0f172a', color: 'white' }}>Three Phase (3-Ph)</option>
                 </select>
+            </div>
+            <div>
+                <label className="label">Required Backup Hours</label>
+                <input 
+                    type="number" className="input-field" value={formData.backup_hours || 4} 
+                    onChange={e => setFormData({...formData, backup_hours: parseFloat(e.target.value) || 0})} 
+                />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
                 <label className="label">Notes</label>
@@ -253,7 +261,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                                             </div>
                                             {imbalance.isImbalanced && (
                                                 <div style={{ fontSize: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    <AlertTriangle size={12}/> Warning: > 20% deviation
+                                                    <AlertTriangle size={12}/> Warning: {'>'} 20% deviation
                                                 </div>
                                             )}
                                         </div>
@@ -377,14 +385,13 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
         
         // Admin Simulator parameters (local state)
         const [simulator, setSimulator] = useState({
-            backup_hours: 4,
             diversity_factor: 0.8
         });
         
         // Sizing logic
         const targetKw = measuredPeakKw > 0 ? measuredPeakKw : eqTotals.totalKw;
         const requiredInverterKw = targetKw * 1.2; // 20% margin
-        const targetKwh = targetKw * simulator.backup_hours * simulator.diversity_factor;
+        const targetKwh = targetKw * (formData.backup_hours || 4) * simulator.diversity_factor;
         
         const handlePush = () => {
             const pushData = {
@@ -420,7 +427,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                     </div>
                     {crossCheck.isMismatched && (
                         <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <AlertTriangle size={16}/> Warning: Measurement inconsistency detected (>15% deviation). Please review field inputs.
+                            <AlertTriangle size={16}/> Warning: Measurement inconsistency detected ({'>'}15% deviation). Please review field inputs.
                         </div>
                     )}
                 </div>
@@ -432,10 +439,10 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                         <div>
-                            <label className="label">Target Backup Duration (Hours)</label>
+                            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Backup Hours (Set in Site Info)</div>
                             <input 
-                                type="number" className="input-field" value={simulator.backup_hours} 
-                                onChange={e => setSimulator({...simulator, backup_hours: parseFloat(e.target.value)||0})} 
+                                type="number" className="input-field" value={formData.backup_hours || 4} disabled
+                                style={{ opacity: 0.7 }}
                             />
                         </div>
                         <div>
@@ -560,19 +567,22 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                 </div>
 
                 {/* Step Wizard Header */}
-                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '2rem', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.5rem' }}>
                     {steps.map((step, index) => (
                         <button 
                             key={step.id}
                             onClick={() => setActiveTab(step.id)}
                             style={{ 
-                                padding: '0.75rem 1.5rem', 
-                                background: 'transparent', 
-                                borderBottom: currentStepId === step.id ? '2px solid var(--color-primary)' : '2px solid transparent', 
+                                padding: '0.75rem 1rem', 
+                                background: currentStepId === step.id ? 'rgba(255,255,255,0.05)' : 'transparent', 
+                                border: '1px solid',
+                                borderColor: currentStepId === step.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                borderRadius: '0.5rem',
                                 color: currentStepId === step.id ? 'white' : '#94a3b8', 
                                 cursor: 'pointer',
                                 fontWeight: currentStepId === step.id ? 600 : 400,
-                                whiteSpace: 'nowrap'
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s'
                             }}
                         >
                             {step.title}

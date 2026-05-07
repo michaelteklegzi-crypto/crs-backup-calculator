@@ -7,7 +7,7 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
     if (!siteData) return <div id={reportId}>No Data</div>;
 
     const { 
-        client_name, branch_name, location, voltage, phase_type, power_factor,
+        client_name, branch_name, location, voltage, phase_type, power_factor, backup_hours,
         entered_by_name, measurements, equipment, general_info, created_at 
     } = siteData;
 
@@ -83,7 +83,7 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
                 <h2 style={{ fontSize: '18px', color: colors.slateText, margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Info size={20} color={colors.primary} /> Site Details
                 </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '20px' }}>
                     <div>
                         <div style={{ fontSize: '12px', color: colors.mutedText, display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <User size={12}/> Client
@@ -96,6 +96,12 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
                             <MapPin size={12}/> Location
                         </div>
                         <div style={{ fontSize: '16px', fontWeight: 600, marginTop: '4px' }}>{location || '-'}</div>
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '12px', color: colors.mutedText, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Battery size={12}/> Target Autonomy
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: 600, marginTop: '4px' }}>{backup_hours || 4} Hours</div>
                     </div>
                     <div>
                         <div style={{ fontSize: '12px', color: colors.mutedText, display: 'flex', alignItems: 'center', gap: '4px' }}>
