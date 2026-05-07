@@ -108,6 +108,19 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
         }
     };
 
+    const handleReopen = async () => {
+        if (!confirm('Reopen this audit for editing? Status will be changed back to Draft.')) return;
+        try {
+            const { error } = await supabase.from('field_audits').update({ status: 'draft' }).eq('id', formData.id);
+            if (error) throw error;
+            setFormData({ ...formData, status: 'draft' });
+            alert('Audit reopened for editing.');
+        } catch (err) {
+            console.error('Reopen error:', err);
+            alert('Failed to reopen audit.');
+        }
+    };
+
     // --- Dynamic Sub-Renderers ---
 
     const renderGeneralInfo = () => (
@@ -503,7 +516,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                     <div style={{ marginBottom: '1rem' }}><CheckCircle size={24} color="var(--color-primary)" /></div>
                     <h4 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Submit & Analyze</h4>
                     <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem', flex: 1 }}>
-                        Locks the audit and runs the engineering simulator to generate the recommended system sizes. Use this when the audit is 100% complete.
+                        Submits the audit for analysis. {role === 'admin' ? 'You can reopen it later from the header if corrections are needed.' : 'Once submitted, only an admin can reopen it for editing.'}
                     </p>
                     <button onClick={() => handleSave(true)} className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
                         Submit Final Audit
@@ -555,7 +568,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                 </div>
                 
                 {/* Clean Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <button onClick={handleBack} className="btn-icon-only" style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <ArrowLeft size={16} /> Back
@@ -563,7 +576,17 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
                         <h2 style={{ fontSize: '1.25rem', color: 'white', margin: 0 }}>
                             {formData.client_name ? `Audit: ${formData.client_name}` : 'New Site Audit'}
                         </h2>
+                        {formData.status === 'submitted' && (
+                            <span style={{ padding: '2px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>
+                                Submitted
+                            </span>
+                        )}
                     </div>
+                    {formData.status === 'submitted' && role === 'admin' && (
+                        <button onClick={handleReopen} style={{ padding: '0.5rem 1rem', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '0.5rem', color: '#f59e0b', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Settings size={14} /> Reopen for Editing
+                        </button>
+                    )}
                 </div>
 
                 {/* Step Wizard Header */}
