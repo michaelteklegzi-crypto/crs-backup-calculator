@@ -207,7 +207,23 @@ https://crs-worldwide.com
         setEditingProposal(proposal.id);
         const json = proposal.analysis_json || {};
         const cfg = json.config || {};
-        setEditAppliances(cfg.appliances || []);
+        
+        // If appliances are stored, use them. Otherwise reconstruct from system data.
+        if (cfg.appliances && cfg.appliances.length > 0) {
+            setEditAppliances(cfg.appliances);
+        } else {
+            // Reconstruct an equivalent single-item load from the stored system sizing
+            const peakW = json.systemSize?.peakPowerW || (proposal.system_size_inverter_kw * 1000 / 1.2) || 1000;
+            const dailyWh = json.systemSize?.totalDailyEnergyWh || (peakW * 8);
+            const avgHours = dailyWh / peakW || 8;
+            setEditAppliances([{
+                name: 'Existing Load (reconstructed)',
+                watts: Math.round(peakW),
+                hours: Math.round(avgHours * 10) / 10,
+                quantity: 1,
+                dutyCycle: 1
+            }]);
+        }
         setEditOutageHours(cfg.outageHours || 4);
         setEditPhase(cfg.phase || 'single');
     };
@@ -228,11 +244,12 @@ https://crs-worldwide.com
 
     const recalculateAndSaveProposal = async (proposal) => {
         try {
-            if (editAppliances.length === 0) return alert('Add at least one appliance.');
+            const validAppliances = editAppliances.filter(a => a.watts > 0);
+            if (validAppliances.length === 0) return alert('Add at least one appliance with wattage > 0.');
             const phaseVal = editPhase === '3-phase' ? '3-phase' : 'single';
-            const size = calculateSystemSize(editAppliances, editOutageHours, phaseVal, constants);
+            const size = calculateSystemSize(validAppliances, editOutageHours, phaseVal, constants);
             const money = calculateFinancials(size, { outageHoursPerDay: editOutageHours }, constants);
-            const hourlyResult = calculateHourlyEnergy(size, size.totalDailyEnergyWh, 'residential', editAppliances);
+            const hourlyResult = calculateHourlyEnergy(size, size.totalDailyEnergyWh, 'residential', validAppliances);
 
             const updatedJson = {
                 systemSize: size,
@@ -241,7 +258,7 @@ https://crs-worldwide.com
                 hourlyData: hourlyResult?.data || [],
                 hourlyNote: hourlyResult?.note || '',
                 config: {
-                    appliances: editAppliances,
+                    appliances: validAppliances,
                     outageHours: editOutageHours,
                     phase: phaseVal,
                     userType: proposal.analysis_json?.config?.userType || 'residential'
