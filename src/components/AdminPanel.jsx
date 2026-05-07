@@ -68,6 +68,10 @@ const AdminPanel = ({ constants, onUpdate, isOpen, onClose, applianceCatalog, fe
     const [renderingReportForLead, setRenderingReportForLead] = useState(null);
     const [previewReportLead, setPreviewReportLead] = useState(null);
 
+    // Lead Editing State
+    const [editingLead, setEditingLead] = useState(null);
+    const [editLeadData, setEditLeadData] = useState({});
+
     const handleSendReport = async (lead) => {
         const proposal = lead.proposals?.[0];
         console.log('[PDF] Lead:', lead);
@@ -164,6 +168,31 @@ https://crs-worldwide.com
             console.error("Error fetching admin data:", err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const startEditLead = (lead) => {
+        setEditingLead(lead.id);
+        setEditLeadData({
+            name: lead.name || '',
+            email: lead.email || '',
+            phone: lead.phone || '',
+            company: lead.company || '',
+            location: lead.location || '',
+            status: lead.status || 'new'
+        });
+    };
+
+    const saveLeadEdit = async (leadId) => {
+        try {
+            const { error } = await supabase.from('leads').update(editLeadData).eq('id', leadId);
+            if (error) throw error;
+            setEditingLead(null);
+            fetchLeads();
+            alert('Lead updated successfully.');
+        } catch (err) {
+            console.error('Error updating lead:', err);
+            alert('Failed to update lead.');
         }
     };
 
@@ -536,10 +565,58 @@ https://crs-worldwide.com
 
                                                         {/* Contact Info */}
                                                         <div>
-                                                            <h4 style={{ color: '#cbd5e1', marginBottom: '0.5rem', fontSize: '0.9rem', textTransform: 'uppercase' }}>Contact Details</h4>
-                                                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Phone: <span style={{ color: 'white' }}>{lead.phone}</span></p>
-                                                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Email: <span style={{ color: 'white' }}>{lead.email || '-'}</span></p>
-                                                            {lead.company && <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Company: <span style={{ color: 'white' }}>{lead.company}</span></p>}
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                                <h4 style={{ color: '#cbd5e1', fontSize: '0.9rem', textTransform: 'uppercase', margin: 0 }}>Contact Details</h4>
+                                                                {editingLead === lead.id ? (
+                                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                        <button onClick={() => saveLeadEdit(lead.id)} style={{ padding: '4px 12px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '4px', color: '#10b981', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                                                                        <button onClick={() => setEditingLead(null)} style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#94a3b8', fontSize: '0.75rem', cursor: 'pointer' }}>Cancel</button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button onClick={() => startEditLead(lead)} style={{ padding: '4px 12px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '4px', color: '#f59e0b', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Edit Lead</button>
+                                                                )}
+                                                            </div>
+                                                            {editingLead === lead.id ? (
+                                                                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Name</label>
+                                                                        <input className="input-field" value={editLeadData.name} onChange={e => setEditLeadData({...editLeadData, name: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Email</label>
+                                                                        <input className="input-field" value={editLeadData.email} onChange={e => setEditLeadData({...editLeadData, email: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Phone</label>
+                                                                        <input className="input-field" value={editLeadData.phone} onChange={e => setEditLeadData({...editLeadData, phone: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Company</label>
+                                                                        <input className="input-field" value={editLeadData.company} onChange={e => setEditLeadData({...editLeadData, company: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Location</label>
+                                                                        <input className="input-field" value={editLeadData.location} onChange={e => setEditLeadData({...editLeadData, location: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase' }}>Status</label>
+                                                                        <select className="input-field" value={editLeadData.status} onChange={e => setEditLeadData({...editLeadData, status: e.target.value})} style={{ padding: '0.4rem 0.5rem', fontSize: '0.85rem' }}>
+                                                                            <option value="new" style={{ background: '#0f172a', color: 'white' }}>New</option>
+                                                                            <option value="contacted" style={{ background: '#0f172a', color: 'white' }}>Contacted</option>
+                                                                            <option value="emailed" style={{ background: '#0f172a', color: 'white' }}>Emailed</option>
+                                                                            <option value="converted" style={{ background: '#0f172a', color: 'white' }}>Converted</option>
+                                                                            <option value="lost" style={{ background: '#0f172a', color: 'white' }}>Lost</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Phone: <span style={{ color: 'white' }}>{lead.phone}</span></p>
+                                                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Email: <span style={{ color: 'white' }}>{lead.email || '-'}</span></p>
+                                                                    {lead.company && <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Company: <span style={{ color: 'white' }}>{lead.company}</span></p>}
+                                                                    {lead.location && <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}>Location: <span style={{ color: 'white' }}>{lead.location}</span></p>}
+                                                                </>
+                                                            )}
                                                         </div>
 
                                                         {/* Applications */}
