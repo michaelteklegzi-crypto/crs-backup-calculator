@@ -320,7 +320,7 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
         
         const updateEq = (idx, field, val) => {
             const newEq = [...formData.equipment];
-            newEq[idx][field] = val;
+            newEq[idx] = { ...newEq[idx], [field]: val };
             setFormData({ ...formData, equipment: newEq });
         };
         
