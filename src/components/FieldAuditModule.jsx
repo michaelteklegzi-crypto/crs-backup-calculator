@@ -75,7 +75,9 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     };
     
     const handleOpenSite = (site) => {
-        setFormData({ ...site });
+        // Restore backup_hours from general_info JSONB where it is persisted
+        const backupHours = site.general_info?.backup_hours ?? site.backup_hours ?? 4;
+        setFormData({ ...site, backup_hours: backupHours });
         setActiveSite(site.id);
         setActiveTab('general');
     };
@@ -88,16 +90,35 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     
     const handleSave = async (submit = false) => {
         try {
-            const dataToSave = { ...formData };
-            if (submit) dataToSave.status = 'submitted';
+            // Build a clean payload with only the columns that exist in the field_audits table.
+            // backup_hours is stored inside general_info (JSONB) since it has no dedicated column.
+            const generalInfoWithBackup = {
+                ...formData.general_info,
+                backup_hours: formData.backup_hours
+            };
+
+            const dataToSave = {
+                entered_by_name: formData.entered_by_name,
+                entered_by_id: formData.entered_by_id,
+                client_name: formData.client_name,
+                branch_name: formData.branch_name,
+                location: formData.location,
+                voltage: formData.voltage,
+                power_factor: formData.power_factor,
+                phase_type: formData.phase_type,
+                measurements: formData.measurements,
+                equipment: formData.equipment,
+                general_info: generalInfoWithBackup,
+                analysis_results: formData.analysis_results || {},
+                status: submit ? 'submitted' : (formData.status || 'draft')
+            };
             
-            if (dataToSave.id === 'new') {
-                delete dataToSave.id;
+            if (formData.id === 'new') {
                 const { error } = await supabase.from('field_audits').insert([dataToSave]);
                 if (error) throw error;
                 alert('Site saved successfully!');
             } else {
-                const { error } = await supabase.from('field_audits').update(dataToSave).eq('id', dataToSave.id);
+                const { error } = await supabase.from('field_audits').update(dataToSave).eq('id', formData.id);
                 if (error) throw error;
                 alert('Site updated successfully!');
             }
