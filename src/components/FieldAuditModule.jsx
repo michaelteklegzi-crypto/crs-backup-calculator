@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { 
     Activity, ArrowLeft, CheckCircle, ChevronRight, FileText, 
-    Plus, Save, Settings, AlertTriangle, Send, Download
+    Plus, Save, Settings, AlertTriangle, Send, Download, Shield
 } from 'lucide-react';
 import { 
     calculatePowerKW, calculateThreePhaseMetrics, 
-    calculateEquipmentLoad, runCrossCheck 
+    calculateEquipmentLoad, runCrossCheck,
+    runFullEngineeringAnalysis
 } from '../utils/fieldLogic';
 import FieldAuditReportTemplate from './FieldAuditReportTemplate';
 import { generatePDFReport } from '../utils/pdfExport';
@@ -399,111 +400,111 @@ const FieldAuditModule = ({ role, currentUser, onPushToCalculator }) => {
     };
 
     const renderAnalysis = () => {
-        // Run cross check
-        const isThreePhase = formData.phase_type === 'three_phase';
-        const peakMeas = formData.measurements.peak || { r: '', s: '', t: '', l: '' };
-        
-        let measuredPeakKw = 0;
-        if (isThreePhase) {
-            const r = parseFloat(peakMeas.r) || 0;
-            const s = parseFloat(peakMeas.s) || 0;
-            const t = parseFloat(peakMeas.t) || 0;
-            const avg = (r + s + t) / 3;
-            measuredPeakKw = calculatePowerKW(formData.voltage, avg, formData.power_factor, 'three_phase');
-        } else {
-            measuredPeakKw = calculatePowerKW(formData.voltage, parseFloat(peakMeas.l)||0, formData.power_factor, 'single_phase');
-        }
-        const eqTotals = calculateEquipmentLoad(formData.equipment);
-        
-        const crossCheck = runCrossCheck(measuredPeakKw, eqTotals.totalKw);
-        
-        // Admin Simulator parameters (local state)
-        const [simulator, setSimulator] = useState({
-            diversity_factor: 0.8
-        });
-        
-        // Sizing logic
-        const targetKw = measuredPeakKw > 0 ? measuredPeakKw : eqTotals.totalKw;
-        const requiredInverterKw = targetKw * 1.2; // 20% margin
-        const targetKwh = targetKw * (formData.backup_hours || 4) * simulator.diversity_factor;
-        
+        const analysis = runFullEngineeringAnalysis(formData);
+        const { loads, sizing, phaseAnalysis, crossCheck, validationWarnings, confidence, observations, futureExpansion } = analysis;
+        const confColor = confidence.rating === 'HIGH' ? '#22c55e' : confidence.rating === 'MEDIUM' ? '#f59e0b' : '#ef4444';
+
         const handlePush = () => {
-            const pushData = {
-                peakKw: targetKw,
-                batteryKwh: targetKwh
-            };
-            onPushToCalculator(pushData);
+            onPushToCalculator({ peakKw: loads.designLoad, batteryKwh: sizing.battery.rawKwh });
         };
-        
+
+        const loadCard = (label, value, accent) => (
+            <div style={{ flex: 1, textAlign: 'center', padding: '1rem 0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: accent || 'white', marginTop: '0.25rem' }}>{value.toFixed(2)}</div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>kW</div>
+            </div>
+        );
+
         return (
-            <div style={{ display: 'grid', gap: '2rem' }}>
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {/* Load Classification */}
                 <div className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Activity size={18}/> Cross-Check Intelligence
+                    <h3 style={{ fontSize: '1rem', color: 'white', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Activity size={16}/> Load Classification
                     </h3>
-                    
-                    <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Measured Peak (kW)</div>
-                            <div style={{ fontSize: '1.5rem', color: 'white' }}>{measuredPeakKw.toFixed(2)}</div>
-                        </div>
-                        <div style={{ fontSize: '1.5rem', color: '#64748b' }}>vs</div>
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Equipment Total (kW)</div>
-                            <div style={{ fontSize: '1.5rem', color: 'white' }}>{eqTotals.totalKw.toFixed(2)}</div>
-                        </div>
-                        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Deviation</div>
-                            <div style={{ fontSize: '1.5rem', color: crossCheck.isMismatched ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
-                                {crossCheck.differencePercent.toFixed(1)}%
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        {loadCard('Connected', loads.connected, '#94a3b8')}
+                        {loadCard('Continuous', loads.measuredContinuous, '#38bdf8')}
+                        {loadCard('Peak', loads.measuredPeak, '#f59e0b')}
+                        {loadCard('Design Load', loads.designLoad, '#22c55e')}
+                    </div>
+                </div>
+
+                {/* Cross-Check & Confidence */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <h3 style={{ fontSize: '1rem', color: 'white', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Activity size={16}/> Cross-Check
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div><div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Peak</div><div style={{ fontSize: '1.2rem', color: 'white' }}>{loads.measuredPeak.toFixed(2)} kW</div></div>
+                            <div style={{ color: '#64748b' }}>vs</div>
+                            <div><div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Equipment</div><div style={{ fontSize: '1.2rem', color: 'white' }}>{loads.connected.toFixed(2)} kW</div></div>
+                            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: crossCheck.isMismatched ? '#ef4444' : '#22c55e' }}>{crossCheck.differencePercent.toFixed(1)}%</div>
                             </div>
                         </div>
                     </div>
-                    {crossCheck.isMismatched && (
-                        <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '0.5rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <AlertTriangle size={16}/> Warning: Measurement inconsistency detected ({'>'}15% deviation). Please review field inputs.
-                        </div>
-                    )}
+                    <div className="card" style={{ background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <Shield size={20} color={confColor} style={{ marginBottom: '0.5rem' }}/>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: confColor }}>{confidence.rating}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Confidence • {confidence.score}/100</div>
+                    </div>
                 </div>
 
-                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(15, 23, 42, 0.4) 100%)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                    <h3 style={{ fontSize: '1.1rem', color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Settings size={18}/> System Sizing Simulator
+                {/* Validation Warnings */}
+                {validationWarnings.length > 0 && (
+                    <div className="card" style={{ background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                        <h3 style={{ fontSize: '1rem', color: '#ef4444', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <AlertTriangle size={16}/> Engineering Warnings
+                        </h3>
+                        {validationWarnings.map((w, i) => (
+                            <div key={i} style={{ padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.375rem', fontSize: '0.8rem', color: w.severity === 'critical' ? '#ef4444' : w.severity === 'warning' ? '#f59e0b' : '#38bdf8', marginBottom: '0.4rem' }}>
+                                {w.message}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* System Sizing */}
+                <div className="card" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(15,23,42,0.4) 100%)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                    <h3 style={{ fontSize: '1rem', color: 'white', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Settings size={16}/> System Sizing
                     </h3>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', marginBottom: '1rem' }}>
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem' }}>Backup Hours (Set in Site Info)</div>
-                            <input 
-                                type="number" className="input-field" value={formData.backup_hours || 4} disabled
-                                style={{ opacity: 0.7 }}
-                            />
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Battery Capacity</div>
+                            <div style={{ fontSize: '1.5rem', color: 'var(--color-accent-emerald)', fontWeight: 700 }}>{sizing.battery.roundedKwh} kWh</div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Raw: {sizing.battery.rawKwh.toFixed(2)} kWh</div>
                         </div>
                         <div>
-                            <label className="label">Diversity Factor (0-1)</label>
-                            <input 
-                                type="number" className="input-field" value={simulator.diversity_factor} 
-                                onChange={e => setSimulator({...simulator, diversity_factor: parseFloat(e.target.value)||0})} 
-                                step="0.1" max="1" min="0"
-                            />
+                            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Inverter Size</div>
+                            <div style={{ fontSize: '1.5rem', color: '#38bdf8', fontWeight: 700 }}>{sizing.inverter.commercialKw} kW</div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Required: {sizing.inverter.requiredKw.toFixed(2)} kW</div>
                         </div>
                     </div>
-                    
-                    <div style={{ display: 'flex', gap: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem', marginBottom: '1.5rem' }}>
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Recommended Inverter Size</div>
-                            <div style={{ fontSize: '1.5rem', color: 'white' }}>{requiredInverterKw.toFixed(2)} kW</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Required Battery Capacity</div>
-                            <div style={{ fontSize: '1.5rem', color: 'var(--color-accent-emerald)', fontWeight: 600 }}>{targetKwh.toFixed(2)} kWh</div>
-                        </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', padding: '0.75rem', background: 'rgba(0,0,0,0.15)', borderRadius: '0.375rem', marginBottom: '1rem' }}>
+                        Design Load = MAX(Peak, Continuous × 1.20) = <b style={{ color: 'white' }}>{loads.designLoad.toFixed(2)} kW</b>
                     </div>
-                    
                     <button onClick={handlePush} className="btn-primary" style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                         <Send size={18}/> Push to CRS Calculator
                     </button>
                 </div>
+
+                {/* Observations */}
+                {observations.length > 0 && (
+                    <div className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                        <h3 style={{ fontSize: '1rem', color: 'white', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <FileText size={16}/> Engineering Observations
+                        </h3>
+                        {observations.map((obs, i) => (
+                            <div key={i} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: '#cbd5e1', borderLeft: '2px solid #38bdf8', marginBottom: '0.5rem', background: 'rgba(0,0,0,0.1)', borderRadius: '0 0.375rem 0.375rem 0' }}>
+                                {obs}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         );
     };
