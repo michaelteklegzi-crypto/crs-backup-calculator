@@ -44,23 +44,6 @@ export const generatePDFReport = async (elementId = 'premium-results-report', fi
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 300)));
 
     try {
-        const canvas = await html2canvas(input, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            width: input.scrollWidth,
-            height: input.scrollHeight,
-            windowWidth: input.scrollWidth,
-            windowHeight: input.scrollHeight,
-            scrollX: 0,
-            scrollY: 0,
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-
-        // A4 portrait PDF
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
@@ -71,21 +54,58 @@ export const generatePDFReport = async (elementId = 'premium-results-report', fi
         const pageWidthMm = pdf.internal.pageSize.getWidth();   // 210mm
         const pageHeightMm = pdf.internal.pageSize.getHeight(); // 297mm
 
-        // Scale canvas px → mm
-        const pxToMm = pageWidthMm / canvas.width;
-        const totalHeightMm = canvas.height * pxToMm;
+        const pdfPages = input.querySelectorAll('.pdf-page');
 
-        let printedHeightMm = 0;
+        if (pdfPages.length > 0) {
+            for (let i = 0; i < pdfPages.length; i++) {
+                const pageEl = pdfPages[i];
+                const pageCanvas = await html2canvas(pageEl, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    width: pageEl.scrollWidth,
+                    height: pageEl.scrollHeight,
+                    windowWidth: pageEl.scrollWidth,
+                    windowHeight: pageEl.scrollHeight,
+                });
 
-        // First page
-        pdf.addImage(imgData, 'JPEG', 0, -printedHeightMm, pageWidthMm, totalHeightMm);
-        printedHeightMm += pageHeightMm;
+                const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+                const pxToMm = pageWidthMm / pageCanvas.width;
+                const imgHeightMm = pageCanvas.height * pxToMm;
 
-        // Additional pages if content overflows
-        while (printedHeightMm < totalHeightMm) {
-            pdf.addPage();
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, imgHeightMm);
+            }
+        } else {
+            // Fallback for single large canvas
+            const canvas = await html2canvas(input, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                width: input.scrollWidth,
+                height: input.scrollHeight,
+                windowWidth: input.scrollWidth,
+                windowHeight: input.scrollHeight,
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            const pxToMm = pageWidthMm / canvas.width;
+            const totalHeightMm = canvas.height * pxToMm;
+
+            let printedHeightMm = 0;
+
             pdf.addImage(imgData, 'JPEG', 0, -printedHeightMm, pageWidthMm, totalHeightMm);
             printedHeightMm += pageHeightMm;
+
+            while (printedHeightMm < totalHeightMm) {
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, -printedHeightMm, pageWidthMm, totalHeightMm);
+                printedHeightMm += pageHeightMm;
+            }
         }
 
         // Force download

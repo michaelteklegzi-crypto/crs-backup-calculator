@@ -7,6 +7,7 @@ import PremiumResults from './PremiumResults';
 import PDFReportTemplate from './PDFReportTemplate';
 import { generatePDFReport } from '../utils/pdfExport';
 import FieldAuditModule from './FieldAuditModule';
+import SolarmanDashboard from './SolarmanDashboard';
 
 const DESCRIPTIONS = {
     SYSTEM_EFFICIENCY: "Overall system efficiency factor (0-1). Accounts for wire loss, etc.",
@@ -587,6 +588,18 @@ https://crs-worldwide.com
                             >
                                 System Parameters
                             </button>
+                            <button
+                                onClick={() => setActiveTab('solarman')}
+                                style={{
+                                    padding: '1rem 1.5rem', background: 'transparent',
+                                    borderBottom: activeTab === 'solarman' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                                    color: activeTab === 'solarman' ? 'white' : '#94a3b8',
+                                    fontWeight: activeTab === 'solarman' ? 600 : 400,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Solarman Data
+                            </button>
                         </>
                     )}
                 </div>
@@ -601,6 +614,13 @@ https://crs-worldwide.com
                             currentUser={currentUser} 
                             onPushToCalculator={onPushToCalculator} 
                         />
+                    )}
+
+                    {/* SOLARMAN DATA TAB */}
+                    {activeTab === 'solarman' && (
+                        <div className="animate-fade-in">
+                            <SolarmanDashboard />
+                        </div>
                     )}
 
                     {/* LEADS TAB */}

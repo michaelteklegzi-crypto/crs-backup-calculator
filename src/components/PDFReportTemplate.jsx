@@ -39,14 +39,12 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
     const dailySolarYield = ((Array.isArray(hourlyData) ? hourlyData.reduce((a,c) => a + (c.solar||0), 0) : 0) / 1000).toFixed(1);
 
     return (
-        <div id={reportId} style={{ 
-            width: '1000px',
-            padding: '40px', 
-            background: '#ffffff', 
-            color: colors.slateText,
-            fontFamily: '"Inter", "Segoe UI", sans-serif',
-            boxSizing: 'border-box'
-        }}>
+    const pageStyle = { width: '1000px', minHeight: '1414px', padding: '40px', background: '#ffffff', color: colors.slateText, fontFamily: '"Inter", "Segoe UI", sans-serif', boxSizing: 'border-box', position: 'relative' };
+
+    return (
+        <div id={reportId}>
+            {/* ─── PAGE 1 ─── */}
+            <div className="pdf-page" style={pageStyle}>
             {/* ─── BRAND HEADER ──────────────────────────────────────────── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `2px solid ${colors.primary}`, paddingBottom: '20px', marginBottom: '30px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -183,6 +181,11 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
                 </ul>
             </div>
 
+            </div> {/* END PAGE 1 */}
+
+            {/* ─── PAGE 2 ─── */}
+            <div className="pdf-page" style={pageStyle}>
+
             {/* ─── HYBRID OPERATIONAL ENERGY LOGIC ──────────────────────── */}
             <h2 style={{ fontSize: '20px', color: colors.slateText, margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={20} color={colors.secondary} /> Hybrid Operational Energy Logic
@@ -294,7 +297,7 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
             </div>
 
             {/* ─── FOOTER DISCLAIMER ────────────────────────────────────── */}
-            <div style={{ marginTop: '30px', paddingTop: '16px', borderTop: `2px solid ${colors.border}` }}>
+            <div style={{ position: 'absolute', bottom: '40px', left: '40px', right: '40px', paddingTop: '16px', borderTop: `2px solid ${colors.border}` }}>
                 <div style={{ fontSize: '11px', color: colors.mutedText, lineHeight: 1.7, marginBottom: '16px', background: colors.bgBox, padding: '14px 16px', borderRadius: '8px', border: `1px solid ${colors.border}` }}>
                     <strong style={{ color: colors.slateText }}>Disclaimer:</strong> System performance projections are based on modeled load assumptions, 
                     irradiation estimates, inverter efficiency factors, and simulated operating conditions. Actual field performance may vary depending 
@@ -306,6 +309,8 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
                     <div>Proprietary Engineering Feasibility Report • {todayDate}</div>
                 </div>
             </div>
+
+            </div> {/* END PAGE 2 */}
 
         </div>
     );

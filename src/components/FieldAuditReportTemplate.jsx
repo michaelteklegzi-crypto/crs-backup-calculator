@@ -40,9 +40,12 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
     const pMeas = measurements?.peak || {};
     const fMeas = measurements?.full || {};
 
-    return (
-        <div id={reportId} style={{ width: '1000px', padding: '36px', background: c.white, color: c.slate, fontFamily: '"Inter","Segoe UI",sans-serif', boxSizing: 'border-box', lineHeight: 1.5 }}>
+    const pageStyle = { width: '1000px', minHeight: '1414px', padding: '36px', background: c.white, color: c.slate, fontFamily: '"Inter","Segoe UI",sans-serif', boxSizing: 'border-box', lineHeight: 1.5, position: 'relative' };
 
+    return (
+        <div id={reportId}>
+            {/* ─── PAGE 1 ─── */}
+            <div className="pdf-page" style={pageStyle}>
             {/* ═══ 1. HEADER ═══ */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `3px solid ${c.primary}`, paddingBottom: '16px', marginBottom: '24px' }}>
                 <div>
@@ -167,6 +170,11 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
                 </table>
             </div>
 
+            </div> {/* END PAGE 1 */}
+
+            {/* ─── PAGE 2 ─── */}
+            <div className="pdf-page" style={pageStyle}>
+
             {/* ═══ 6. LOAD CLASSIFICATION ═══ */}
             <div style={{ marginBottom: '22px' }}>
                 {sectionTitle('📊', 'Load Classification')}
@@ -237,6 +245,11 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
                     <div>Inverter = {analysis.loads.designLoad.toFixed(2)} kW{analysis.futureExpansion.detected ? ` + ${analysis.futureExpansion.additionalKw} kW (expansion)` : ''} × {analysis.assumptions.surgeHeadroom} = <b style={{ color: c.slate }}>{analysis.sizing.inverter.requiredKw.toFixed(2)} kW</b> → rounded to <b style={{ color: c.primary }}>{analysis.sizing.inverter.commercialKw} kW</b></div>
                 </div>
             </div>
+
+            </div> {/* END PAGE 2 */}
+
+            {/* ─── PAGE 3 ─── */}
+            <div className="pdf-page" style={pageStyle}>
 
             {/* ═══ 10. ASSUMPTIONS ═══ */}
             <div style={{ marginBottom: '22px' }}>
@@ -310,10 +323,13 @@ const FieldAuditReportTemplate = ({ reportId, siteData }) => {
             )}
 
             {/* FOOTER */}
-            <div style={{ marginTop: '40px', paddingTop: '16px', borderTop: `2px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: c.muted }}>
+            <div style={{ position: 'absolute', bottom: '36px', left: '36px', right: '36px', paddingTop: '16px', borderTop: `2px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: c.muted }}>
                 <div>info@crs-worldwide.com • https://crs-worldwide.com</div>
                 <div>Engineering Load Assessment Report • Generated automatically from CRS Field App</div>
             </div>
+
+            </div> {/* END PAGE 3 */}
+
         </div>
     );
 };
