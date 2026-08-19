@@ -38,7 +38,6 @@ const PDFReportTemplate = ({ reportId, systemSize, financials, hourlyData, clien
     const estArea = numPanels * 2.5;
     const dailySolarYield = ((Array.isArray(hourlyData) ? hourlyData.reduce((a,c) => a + (c.solar||0), 0) : 0) / 1000).toFixed(1);
 
-    return (
     const pageStyle = { width: '1000px', minHeight: '1414px', padding: '40px', background: '#ffffff', color: colors.slateText, fontFamily: '"Inter", "Segoe UI", sans-serif', boxSizing: 'border-box', position: 'relative' };
 
     return (
